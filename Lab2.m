@@ -2,17 +2,12 @@
 robot = raspbot();
 robot.startLaser();
 
-pause(1);
+pause(2);
 
-for c = 0:100
+for c = 0:200
     lidarData = robot.laser.LatestMessage.Ranges;
     %limits range of sensor
-    for i = 1:96
-        if lidarData(i) > 1 || lidarData(i) < .06
-            lidarData(i) = 1;
-        end
-    end
-    for i = 276:360
+    for i = 1:360
         if lidarData(i) > 1 || lidarData(i) < .06
             lidarData(i) = 1;
         end
@@ -22,7 +17,13 @@ for c = 0:100
     minI = 6;
     %min range
     minR = 1;
-    for i = 1:360
+    for i = 1:96
+        if minR > lidarData(i)
+            minI = i;
+            minR = lidarData(i);
+        end
+    end
+    for i = 276:360
         if minR > lidarData(i)
             minI = i;
             minR = lidarData(i);
@@ -32,17 +33,20 @@ for c = 0:100
     [minX, minY, bearing] = irToXy(minI, minR);
     
     %plot the closest object
-    plot([minX, 0], [minY, 0], 'x'); 
-        axis([-1 1 -1 1]); %for rescaling
+    plot(minX, minY, 'x');
+    xlabel("Distance in m");
+    ylabel("Distance in m"); 
+    title('Position of closest object relative to robot');
+        axis([-2 2 -2 2]); %for rescaling
     %velocity proportional to distance
-    v = (minR - .5)*.3;
+    v = (minR - .5)*.4;
     %.044 is distance from wheel to center of robot
-    if v >=0
-        vR = v + .044*v*(bearing/minR);
-        vL = v - .044*v*(bearing/minR);
-    else %robot is backing away and tries to keep facing object so signs are switched
-        vR = v - .044*v*(bearing/minR);
-        vL = v + .044*v*(bearing/minR);
+    if v >= 0
+        vR = v + .044*v*7*(minY/(minR^2));
+        vL = v - .044*v*7*(minY/(minR^2));
+    else
+        vR = v - .044*v*3*(minY/(minR^2));
+        vL = v + .044*v*3*(minY/(minR^2));
     end
     robot.sendVelocity(vL, vR)
     pause(.2);
@@ -53,10 +57,9 @@ robot.stopLaser();
 robot.shutdown();
 
 function [x, y, th] = irToXy(i, r)
-    if i < 186
-        th = (i-6)*(pi/180);
-    else
-        th = (i-366)*(pi/180);
+    th = (i-6)*(pi/180);
+    if th > pi
+        th = th - 2*pi;
     end
     x = r*cos(th);
     y = r*sin(th);
