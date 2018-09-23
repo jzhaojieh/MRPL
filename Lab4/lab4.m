@@ -1,29 +1,47 @@
 %% Lab 4 Feedforward Control
 % robot = raspbot('sim');
 robot = raspbot('Raspbot-07');
-goal = 0.5;
+goal = .9144;
 encoderStart = (robot.encoders.LatestMessage.Vector.X + robot.encoders.LatestMessage.Vector.Y) / 2;
 encoderCur = (robot.encoders.LatestMessage.Vector.X + robot.encoders.LatestMessage.Vector.Y) / 2;
 e = (goal)-(encoderCur-encoderStart);
 
-kp = 10; kd = 0; ki = 0.0;
+enable = 1;
+tdelay = 0.2;
+kp = 4; kd = 0.15; ki = 0.0;
 eI = 0;
 tArr = [];
+drefArr = [];
+adArr = [];
 start = tic;
 t = toc(start);
 upid = 0;
+dref = 0;
 errArr = [];
+e2Arr = [];
+upidArr = [];
+e2 = 0;
 fprintf('start is equal to %s\n',num2str(tic))
 fprintf('e is equal to %s\n',num2str(e))
-while (t < 6 && abs(e) > 0.00001)
-    olde = e;
+tf = (goal + 0.15^2/0.45)/0.15;
+while (t < (tf + 1) && abs(goal - (encoderCur - encoderStart)) > 0.00001)
+    olde = e2;
     oldt = t;
     encoderCur = (robot.encoders.LatestMessage.Vector.X + robot.encoders.LatestMessage.Vector.Y) / 2;
     e = goal - (encoderCur - encoderStart);
     t = toc(start);
+    sgn = sign(e);
+    
+    uref = trapezoidalVelocityProfile( t , 0.15 , 3 * 0.15, goal, sgn);
+    udelay = trapezoidalVelocityProfile( t - tdelay, 0.15 , 3 * 0.15, goal, sgn);
     dt = t - oldt;
-    eD = (e - olde)/dt;
-    eI = eI + (e * dt);
+    dref = dref + uref * dt;
+%     cdref = udelay * dt;
+    cd = (encoderCur - encoderStart);
+    e2 = -cd + dref;
+    
+    eD = (e2 - olde)/dt;
+    eI = eI + (e2 * dt);
 %     sign = sign(eI);
     if abs(eI) > 0.1
         if eI > 0
@@ -32,7 +50,7 @@ while (t < 6 && abs(e) > 0.00001)
             eI = -1 * 0.1;
         end
     end
-    upid = (e * kp) + (eD * kd) + (eI * ki);
+    upid = (e2 * kp) + (eD * kd) + (eI * ki);
     if abs(upid) > 0.3
         if upid > 0
             upid = 0.3;
@@ -40,11 +58,20 @@ while (t < 6 && abs(e) > 0.00001)
             upid = -1 * 0.3;
         end
     end
-    robot.sendVelocity(upid, upid);
+%     dref = dref + uref * dt;
+  
+    actualD = encoderCur - encoderStart;
+    u = enable*upid + uref;
+    
+    robot.sendVelocity(u, u);
+    upidArr = [upidArr upid];
     pause(0.1)
     errArr = [errArr e];
+    e2Arr = [e2Arr e2];
     tArr = [tArr t];
-    plot(tArr, errArr);
+    drefArr = [drefArr dref];
+    adArr = [adArr actualD];
+    plot(tArr, drefArr, tArr, adArr);
 end
 % 
 % start = tic;
@@ -64,7 +91,8 @@ function uref = trapezoidalVelocityProfile( t , amax, vmax, dist, sgn)
     tramp = vmax / amax;
     sf = dist;
     tf = (sf + vmax^2/amax)/vmax;
-    if t < 0
+    
+    if t < 0 || t >= tf
         uref = 0;
     elseif t < tramp
         uref = amax * t;
