@@ -8,7 +8,7 @@ e = (goal)-(encoderCur-encoderStart);
 
 enable = 1;
 tdelay = 0.2;
-kp = 4; kd = 0.15; ki = 0.0;
+kp = 3; kd = 0.02; ki = 0;
 eI = 0;
 tArr = [];
 drefArr = [];
@@ -17,25 +17,38 @@ start = tic;
 t = toc(start);
 upid = 0;
 dref = 0;
+
 errArr = [];
 e2Arr = [];
 upidArr = [];
 e2 = 0;
+vmax = .25;
+amax = 3 * .25;
+uref = 0;
+udelay = 0;
+
 fprintf('start is equal to %s\n',num2str(tic))
 fprintf('e is equal to %s\n',num2str(e))
-tf = (goal + 0.15^2/0.45)/0.15;
-while (t < (tf + 1) && abs(goal - (encoderCur - encoderStart)) > 0.00001)
+tf = (goal + vmax^2/amax)/vmax;
+while (t < (5.33 + tdelay) && abs(goal - (encoderCur - encoderStart)) > 0.00001)
     olde = e2;
     oldt = t;
-    encoderCur = (robot.encoders.LatestMessage.Vector.X + robot.encoders.LatestMessage.Vector.Y) / 2;
-    e = goal - (encoderCur - encoderStart);
+    
     t = toc(start);
     sgn = sign(e);
     
-    uref = trapezoidalVelocityProfile( t , 0.15 , 3 * 0.15, goal, sgn);
-    udelay = trapezoidalVelocityProfile( t - tdelay, 0.15 , 3 * 0.15, goal, sgn);
+    
+    uref = trapezoidalVelocityProfile( t , amax , vmax , goal, sgn);
+    udelay = trapezoidalVelocityProfile( t - tdelay, amax , vmax , goal, sgn);
     dt = t - oldt;
-    dref = dref + uref * dt;
+    ddref = ddref + uref * dt;
+    dref = dref + udelay * dt;
+    
+    
+    encoderCur = (robot.encoders.LatestMessage.Vector.X + robot.encoders.LatestMessage.Vector.Y) / 2;
+    e = goal - (encoderCur - encoderStart);
+    
+    
 %     cdref = udelay * dt;
     cd = (encoderCur - encoderStart);
     e2 = -cd + dref;
@@ -65,7 +78,7 @@ while (t < (tf + 1) && abs(goal - (encoderCur - encoderStart)) > 0.00001)
     
     robot.sendVelocity(u, u);
     upidArr = [upidArr upid];
-    pause(0.1)
+    pause(0.001)
     errArr = [errArr e];
     e2Arr = [e2Arr e2];
     tArr = [tArr t];
@@ -79,10 +92,9 @@ end
 % encoderCur = (robot.encoders.LatestMessage.Vector.X + robot.encoders.LatestMessage.Vector.Y) / 2;
 % e = (goal)-(encoderCur-encoderStart);
 
-
-
 robot.sendVelocity(0,0);
 robot.shutdown()
+
 function uref = trapezoidalVelocityProfile( t , amax, vmax, dist, sgn)
 % Returns the velocity command of a trapezoidal profile of maximum
 % acceleration amax and maximum velocity vmax whose ramps are of
