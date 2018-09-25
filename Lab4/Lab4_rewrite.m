@@ -11,7 +11,7 @@ global tf;
 
 eold = 0;
 eint = 0;
-goal = .9144;
+goal = 1;
 vmax = .05;
 amax = 3*vmax;
 tdelay = 0.2;
@@ -49,7 +49,7 @@ while (t < (tf + 1) && abs(goal - (encoderCur - encoderStart)) > 0.0001)
     
     u = enable*upid + uref;
     
-    robot.sendVelocity(u, u);
+    robot.sendVelocity(1.02*u, u);
     
     tArr = [tArr t];
     udArr = [udArr dref];
