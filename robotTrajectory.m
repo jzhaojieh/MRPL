@@ -1,9 +1,14 @@
+
 %% Robot Trajectory
 
 classdef robotTrajectory < handle
     properties
         refcontrol
         numsamples
+        tArr
+        dArr
+        vArr
+        pArr
     end
     methods 
         function obj = robotTrajectory(refcontrol, numsamples)
@@ -16,27 +21,39 @@ classdef robotTrajectory < handle
             w = 0;
             dist = 0;
             angle = pi/2;
+%             angle = 0;
             x = 0;
             y = 0;
             p = [x, y, angle];
-            tArr = [];
-            dArr = [];
-            vArr = [];
-            pArr = [];
+            obj.tArr = [];
+            obj.dArr = [];
+            obj.vArr = [];
+            obj.pArr = [];
             dt = figure8ReferenceControl.refcontrol.totalTime / numsamples;
-            for i = 1:(numsamples)
+            for i = 1:(numsamples + 1)
                 ti = (i-1)*dt;
-                tArr = [tArr, ti]; %time update
+                obj.tArr = [obj.tArr, ti]; %time update
                 [V, w] = figure8ReferenceControl.computeControl(obj.refcontrol, ti);
-                vArr = [vArr V]; %velocity update
+                obj.vArr = [obj.vArr V]; %velocity update
                 dist = dist + (V * dt);
-                dArr = [dArr, dist]; %distance update
+                obj.dArr = [obj.dArr, dist]; %distance update
                 angle = angle + w*dt;
                 x = V*dt*sin(angle);
                 y = V*dt*cos(angle);
                 p = [x, y, angle];
-                pArr = [pArr, p]; %position update
+                obj.pArr = [obj.pArr, p]; %position update
             end
+        end
+        function vel = getVelForTime(obj, t)
+            vel = interp1(obj.tArr, transpose(obj.vArr), t);
+        end
+        
+        function dist = getDistForTime(obj, t)
+            dist = interp1(obj.tArr,  transpose(obj.dArr), t);
+        end
+        
+        function pose = getPoseForTime(obj, t)
+            pose = interp1(obj.tArr, transpose(obj.pArr), t);
         end
     end
 end
