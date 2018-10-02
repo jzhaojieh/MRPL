@@ -28,6 +28,7 @@ classdef robotTrajectory < handle
             obj.tArr = [];
             obj.dArr = [];
             obj.vArr = [];
+            obj.wArr = [];
             obj.pArr = [];
             dt = figure8ReferenceControl.refcontrol.totalTime / numsamples;
             for i = 1:(numsamples + 1)
@@ -35,6 +36,7 @@ classdef robotTrajectory < handle
                 obj.tArr = [obj.tArr, ti]; %time update
                 [V, w] = figure8ReferenceControl.computeControl(obj.refcontrol, ti);
                 obj.vArr = [obj.vArr V]; %velocity update
+                obj.wArr = [obj.wArr w];
                 dist = dist + (V * dt);
                 obj.dArr = [obj.dArr, dist]; %distance update
                 angle = angle + w*dt;
@@ -46,6 +48,10 @@ classdef robotTrajectory < handle
         end
         function vel = getVelForTime(obj, t)
             vel = interp1(obj.tArr, transpose(obj.vArr), t);
+        end
+        
+        function w = getWForTime(obj, t)
+            w = interp1(obj.tArr, transpose(obj.wArr), t);
         end
         
         function dist = getDistForTime(obj, t)
