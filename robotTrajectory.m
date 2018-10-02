@@ -21,7 +21,7 @@ classdef robotTrajectory < handle
             V = 0;
             w = 0;
             dist = 0;
-            angle = pi/2;
+            angle = 0;
 %             angle = 0;
             x = 0;
             y = 0;

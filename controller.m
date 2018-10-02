@@ -12,15 +12,16 @@ classdef controller
         function [V, w] = pid(obj, time, curPose)
             tdelay = 0.2;
             dPose = obj.robTraj.getPoseForTime(time - tdelay);
-            perror = pose(dPose(1) - curPose(1), dPose(2) - curPose(2), dPose(3) - curPose(3));
+            theta = atan2(sin(dPose(3) - curPose(3)), cos(dPose(3) - curPose(3)));
+            perror = pose(dPose(1) - curPose(1), dPose(2) - curPose(2), theta);
             rError = [dPose(1) - curPose(1), dPose(2) - curPose(2)] * perror.bToARot();
-            theta = atan2(sin(perror.th), cos(perror.th));
             
-            V = .2*rError(1);
-            if V < .001
+            
+            V = .02*rError(1);
+            if V < .0001
                 rError(2) = 0;
             end
-            w = .1*rError(2) + .2*theta;
+            w = .01*rError(2) + .02*theta;
         end
     end
 end
