@@ -1,7 +1,7 @@
 %% Lab 5 Trajectory Tracking
 % robot = raspbot('Raspbot-07');
 
-robot = raspbot('Raspbot-07');
+robot = raspbot('sim');
 global eold;
 global eint;
 global amax;
@@ -32,25 +32,30 @@ tf = 50;
 start = tic;
 t = toc(start);
 oldt = t;
-
+refcontrol = figure8ReferenceControl([1, 1, 1]);
+traj = robotTrajectory(refcontrol, 500);
+control = controller(traj);
 while (t < (tf + 1) && abs(goal - (encoderCur - encoderStart)) > 0.0001)
     oldt = t;
     t = toc(start);
     dt = t - oldt;
+    
     
     encoderx = robot.encoders.LatestMessage.Vector.X;
     encodery = robot.encoders.LatestMessage.Vector.Y;
     encoderCur = (encoderx + encodery) / 2;
     d = encoderCur - encoderStart;
     
-    uref = trapezoidalVelocityProfile( t , vmax, amax, goal, sign(1));
-    dref = dref + uref * dt;
-    ddelay = ddelay + trapezoidalVelocityProfile(t - tdelay, vmax, amax, goal, sign(1))*dt;
-    upid = getpid(d, dt, ddelay);
+    Vref = traj.getVelForTime(t);
+    wref = traj.getWForTime(t);
+    [Vpid, wpid] = control.pid(t, traj.getPoseForTime(t-tdelay)); 
+    [vlref, vrref] = robotModel.VwTovlvr(Vref, wref);
+    [vlpid, vrpid] = robotModel.VwTovlvr(Vref, wref);
     
-    u = enable*upid + uref;
+    ul = enable*vlpid + vlref;
+    ur = enable*vrpid + vrref;
     
-    robot.sendVelocity(u, u);
+    robot.sendVelocity(ul, ur);
     
     tArr = [tArr t];
     udArr = [udArr dref];
