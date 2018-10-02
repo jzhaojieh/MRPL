@@ -24,7 +24,8 @@ encoderCur = encoderStart;
 tArr = [];
 pArr = [];
 dArr = [];
-
+eArr = [];
+thArr = [];
 x = 0;
 y = 0;
 theta = 0;
@@ -56,7 +57,11 @@ while (t < tf && abs(goal - (encoderCur - encoderStart)) > 0.0001)
     
     Vref = traj.getVelForTime(t);
     wref = traj.getWForTime(t);
-    [Vpid, wpid] = control.pid(t, [x, y, theta]); 
+    [Vpid, wpid, error] = control.pid(t, [x, y, theta]); 
+    
+    eArr = [eArr sqrt(error(1)^2 + error(2)^2)];
+    thArr = [thArr error(3)];
+    
     [vlref, vrref] = robotModel.VwTovlvr(Vref, wref);
     [vlpid, vrpid] = robotModel.VwTovlvr(Vpid, wpid);
     ul = enable*vlpid + vlref;
@@ -74,7 +79,7 @@ while (t < tf && abs(goal - (encoderCur - encoderStart)) > 0.0001)
     x = x + (Vref + enable*Vpid)*dt*sin(theta+(wref+enable*wpid)*dt);
     y = y + (Vref + enable*Vpid)*dt*cos(theta+(wref+enable*wpid)*dt);
     p = [x; y; theta+(wref+enable*wpid)*dt];
-    
+    plot(tArr, eArr, tArr, thArr);
     robot.sendVelocity(ul, ur);
     
     pause(.05);
