@@ -9,6 +9,7 @@ classdef robotTrajectory < handle
         dArr
         vArr
         pArr
+        wArr
     end
     methods 
         function obj = robotTrajectory(refcontrol, numsamples)
@@ -16,7 +17,7 @@ classdef robotTrajectory < handle
             obj.numsamples = numsamples;
         end
         
-        function [tArr, dArr, vArr, pArr] = generateSamples(numsamples)
+        function generateSamples(obj)
             V = 0;
             w = 0;
             dist = 0;
@@ -30,11 +31,11 @@ classdef robotTrajectory < handle
             obj.vArr = [];
             obj.wArr = [];
             obj.pArr = [];
-            dt = figure8ReferenceControl.refcontrol.totalTime / numsamples;
-            for i = 1:(numsamples + 1)
+            dt = obj.refcontrol.totalTime / obj.numsamples;
+            for i = 1:(obj.numsamples)
                 ti = (i-1)*dt;
                 obj.tArr = [obj.tArr, ti]; %time update
-                [V, w] = figure8ReferenceControl.computeControl(obj.refcontrol, ti);
+                [V, w] = obj.refcontrol.computeControl(ti);
                 obj.vArr = [obj.vArr V]; %velocity update
                 obj.wArr = [obj.wArr w];
                 dist = dist + (V * dt);
@@ -42,7 +43,7 @@ classdef robotTrajectory < handle
                 angle = angle + w*dt;
                 x = V*dt*sin(angle);
                 y = V*dt*cos(angle);
-                p = [x, y, angle];
+                p = [x; y; angle];
                 obj.pArr = [obj.pArr, p]; %position update
             end
         end

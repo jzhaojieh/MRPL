@@ -9,18 +9,18 @@ classdef controller
             obj.robTraj = robTraj;
         end
         
-        function [V w] = pid(time, curPose)
+        function [V, w] = pid(obj, time, curPose)
             tdelay = 0.2;
-            dPose = robotTrajectory.getPoseForTime(obj.robTraj, time - tdelay);
+            dPose = obj.robTraj.getPoseForTime(time - tdelay);
             perror = pose(dPose(1) - curPose(1), dPose(2) - curPose(2), dPose(3) - curPose(3));
-            rError = perror * pose.bToARot(perror);
-            perror(3) = atan2(sin(perror(3)), cos(perror(3)));
+            rError = [dPose(1) - curPose(1), dPose(2) - curPose(2)] * perror.bToARot();
+            theta = atan2(sin(perror.th), cos(perror.th));
             
-            V = .2*perror(1);
+            V = .2*rError(1);
             if V < .001
-                perror(2) = 0;
+                rError(2) = 0;
             end
-            w = .1*perror(2) + .2*perror(3);
+            w = .1*rError(2) + .2*theta;
         end
     end
 end

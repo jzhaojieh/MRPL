@@ -22,20 +22,24 @@ encodery = robot.encoders.LatestMessage.Vector.Y;
 encoderStart = (encoderx + encodery) / 2;
 encoderCur = encoderStart;
 tArr = [];
-udArr = [];
+pArr = [];
 dArr = [];
 
-enable = 1;
+enable = 0;
 dref = 0;
 ddelay = 0;
-tf = 50;
 start = tic;
 t = toc(start);
 oldt = t;
-refcontrol = figure8ReferenceControl([1, 1, 1]);
+refcontrol = figure8ReferenceControl(1, 1, 1);
 traj = robotTrajectory(refcontrol, 500);
+traj.generateSamples();
+tArr = traj.tArr;
+dArr = traj.dArr;
+pArr = traj.pArr;
 control = controller(traj);
-while (t < (tf + 1) && abs(goal - (encoderCur - encoderStart)) > 0.0001)
+tf = refcontrol.totalTime;
+while (t < tf && abs(goal - (encoderCur - encoderStart)) > 0.0001)
     oldt = t;
     t = toc(start);
     dt = t - oldt;
@@ -55,65 +59,14 @@ while (t < (tf + 1) && abs(goal - (encoderCur - encoderStart)) > 0.0001)
     ul = enable*vlpid + vlref;
     ur = enable*vrpid + vrref;
     
+    if (isnan(ul) || isnan(ur))
+        ul = 0;
+        ur = 0;
+    end
+    
     robot.sendVelocity(ul, ur);
     
-    tArr = [tArr t];
-    udArr = [udArr dref];
-    dArr = [dArr d];
-    plot(tArr, udArr, tArr, dArr);
     pause(.05);
 end
-
-
-function upid = getpid(d, dt, ddelay)
-global eold;
-global eint;
-
-kp = 4;
-kd = .01;
-ki = .005;
-
-enow = ddelay-d;   
-    edir = abs((enow - eold)/dt);
-    eint = eint + (enow * dt);
-    if abs(eint) > 0.1
-        if eint > 0
-            eint = 0.1;
-        else
-            eint = -1 * 0.1;
-        end
-    end
-    upid = (enow * kp) + (edir * kd) + (eint * ki);
-    if abs(upid) > 0.3
-        if upid > 0
-            upid = 0.3;
-        else
-            upid = -1 * 0.3;
-        end
-    end
-    eold = enow;
-end
-
-function uref = trapezoidalVelocityProfile( t , amax, vmax, dist, sgn)
-% Returns the velocity command of a trapezoidal profile of maximum
-% acceleration amax and maximum velocity vmax whose ramps are of
-% duration tf. Sgn is the sign of the desired velocities.
-% Returns 0 if t is negative. 
-global tf;
-    tramp = vmax / amax;
-    sf = dist;
-    tf = (sf + vmax^2/amax)/vmax;
-    
-    if t < 0 || t >= tf
-        uref = 0;
-    elseif t < tramp
-        uref = amax * t;
-    elseif (tf - t) < tramp
-        uref = amax * (tf - t);
-    elseif tramp < t && t < (tf - tramp)
-        uref = vmax;
-    else
-        uref = 0;
-    end
-    uref = uref * sgn;
-end
+robot.stop();
+robot.shutdown();
