@@ -2,6 +2,7 @@
 classdef controller
     properties
         robTraj
+        pArr
     end
     
     methods
@@ -9,7 +10,7 @@ classdef controller
             obj.robTraj = robTraj;
         end
         
-        function [V, w] = pid(obj, time, curPose)
+        function [V, w, [rError, theta]] = pid(obj, time, curPose)
             tdelay = 0.2;
             dPose = obj.robTraj.getPoseForTime(time - tdelay);
             theta = atan2(sin(dPose(3) - curPose(3)), cos(dPose(3) - curPose(3)));
@@ -22,6 +23,7 @@ classdef controller
                 rError(2) = 0;
             end
             w = .01*rError(2) + .02*theta;
+         
         end
     end
 end
