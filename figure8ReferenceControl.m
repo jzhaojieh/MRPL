@@ -1,47 +1,58 @@
-%%
-classdef figure8ReferenceControl
+classdef figure8ReferenceControl < handle
     properties(Constant)
-        vt = 0.2;
-        sf = 1;
-        tf = 1/0.2;
-        ktheta = 2*pi/1;
+        sf = 1; 
         kk = 15.1084;
     end
+    properties(Access = private)
+    end
     properties(Access = public)
-        ks
-        kv
-        Tf
-        totalTime
-        tPause
+        ks;
+        kv;
+        timeDelay;
+        vt = 0.2; 
+        tf;
+        ktheta = 2*pi/sf;
+        st = vt*t;
+        k = kk/ks*sin(ktheta*st);
+        wt = k*vt;
+        Tf;
+        V;
     end
-    methods
-        function obj = figure8ReferenceControl(Ks,Kv,tPause)
-
-            obj.tPause = tPause;
-            obj.ks = Ks;
-            obj.kv = Kv; 
-            obj.Tf = (obj.ks / obj.kv)*obj.tf;
-            totalTime = 2 * obj.tPause + obj.Tf;
-            obj.totalTime = totalTime;
-
+    methods(Static = true)
+        function obj = figure8ReferenceControl(Ks, Kv, tPause)
+            %Construct a figure 8 trajectory. It will not start until
+            %tPause has elapsed and it will stay at zero for tPause
+            %afterwards. 
+            %Kv scales velocity up when >1
+            %Ks scales the size of curve up
+            
+            %v = 0.1; w = kw*t; kw = 1/8
+            %vr = v + W/2*angularVelocity
+            %vl = v - W/2*angularVelocity 
+            object.ks = Ks;
+            object.kv = Kv;
+            object.timeDelay = tPause;
+            if(Kv > 1)
+                object.vt = object.vt*Kv;
+            end
+            object.tf = object.sf/object.vt;
+            object.ktheta = 2*pi/object.sf;
+            object.Tf = (object.ks/object.kv)*object.tf;
         end
-        function [V, w] = computeControl(obj,timeNow)
-        % Return the linear and angular velocity that the robot
-            if ((timeNow < obj.tPause) || (obj.totalTime - timeNow < obj.tPause) || (timeNow > obj.totalTime))
-                V = 0; w = 0;
-            else 
-                unscalet = (obj.kv / obj.ks)*timeNow;
-                st = obj.vt*unscalet;
-                k = (obj.kk/obj.ks)*sin(obj.ktheta*st);
-                V = obj.kv*obj.vt;
-                w = k*V;
-             end
+        function [V, w] = computeControl(obj, timeNow)
+            %Return the linear and angular velocity that the
+            %robot should be executing at the time timeNow. Any zero
+            %velocity pauses specified in the constructure are implemented
+            %here
+            t = (object.kv/object.ks)*(timeNow-object.timeDelay);
+            object.st = vt*t;
+            object.k = object.kk/object.ks*sin(object.ktheta*object.st);
+            V = object.kv*object.vt;
+            w = object.k*object.V;
         end
-        
         function duration = getTrajectoryDuration(obj)
-         % Return the total time required for motion and for the
-         % initial and terminal pauses.
-            duration = obj.totalTime;
-        end 
-    end
+            %Return the total time required for motion and for the initial
+            %and terminal pauses. 
+            duration = object.Tf + 2*object.timeDelay;
+        end
     end
