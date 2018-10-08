@@ -1,5 +1,5 @@
-%%
-classdef cubicSpiral < handle
+
+classdef cubicSpiralTrajectory < handle
     %cubicSpiral Implements a planar trajectory specified in terms of three 
     % coefficients that adjust the terminal pose of the robot. The initial
     % pose is assumed to be the origin with zero curvature. The terminal
@@ -90,6 +90,17 @@ classdef cubicSpiral < handle
                     % Compute the curve. Break out of this loop, and then 
                     % immediately continue to next iteration of the for b loop 
                     % if tmax is exceeded in absolute value at any time.
+                        s = i * ds;
+                        k = s*(a + b*s)*(s - sMax);
+                        r = r + k^2*ds;
+                        t = t + k * ds;
+                        if (abs(t) > tMax)
+                            broke = true;
+                            break;
+                        end
+                        x = x + (cos(t) * ds); 
+                        y = y + (sin(t) * ds);
+                        
                     end
                     if(broke == true); continue; end;
 
@@ -135,7 +146,7 @@ classdef cubicSpiral < handle
                 plot(plotArrayX(1:n-1),plotArrayY(1:n-1),'.k','MarkerSize',3);
             end
             
-            save('cubicSpirals','a1Tab','a2Tab','b1Tab','b2Tab','r1Tab','r2Tab');
+            save('cubicSpirals2mm_015rads','a1Tab','a2Tab','b1Tab','b2Tab','r1Tab','r2Tab');
 
             figure(2);
             I1 = mat2gray(a1Tab.cellArray, [-aMax aMax]);
@@ -252,9 +263,22 @@ classdef cubicSpiral < handle
             a = obj.parms(1);
             b = obj.parms(2);
             sf = obj.parms(3);
+            th = 0;
+            x = 0;
+            y = 0;
+            
             ds = sf/(obj.numSamples-1);
             for i=1:obj.numSamples-1
-                % fill this in
+                s = i*ds;
+                k = s*(a + b*s)*(s - sf);
+                th = th + k*ds;
+                x = x + cos(th)*ds;
+                y = y + cos(th)*ds;
+                obj.curvArray(i) = k;
+                obj.distArray(i) = s;
+                obj.poseArray(1,i) = x;
+                obj.poseArray(2,i) = y;
+                obj.poseArray(3,i) = th;
             end
             i = obj.numSamples;
             s = (i-1)*ds;  
