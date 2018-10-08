@@ -28,8 +28,8 @@ classdef robotTrajectory < handle
         function generateSamples(obj)
             dt = object.trajTotalTime / object.numSamples;
             for i = 1:(object.numSamples - 1)
-                ti = (i-1)*dt;
-                [V, w] = object.refCon.computeControl(ti);
+                timeInterval = (i-1)*dt;
+                [V, w] = object.refCon.computeControl(timeInterval);
                 
                 %------THIS PART MIGHT BE WRONG-------
                 angle = wArr(i) + (w*dt);
@@ -40,7 +40,7 @@ classdef robotTrajectory < handle
                 %--------------------------------------
                 
                 %updates
-                object.timeArr = [object.timeArr, ti];
+                object.timeArr = [object.timeArr, timeInterval];
                 object.velArr = [object.velArr, V];
                 object.wArr = [object.wArr, w];
                 object.distArr(i+1) = object.distArr(i) + (V*dt);
