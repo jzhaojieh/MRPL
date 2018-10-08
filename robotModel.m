@@ -1,4 +1,3 @@
-%%
 classdef robotModel < handle
     %robotModel A convenience class for storing robot physical 
     % and performing related kinematic transforms. You can reference the
@@ -8,17 +7,17 @@ classdef robotModel < handle
     % routines are referenced from the class name as well.
     
     properties(Constant)
-        W  = .088;   % wheel tread in m
-        W2 = .044; % 1/2 wheel tread in m
+        W  = 0.088;   % wheel tread in m
+        W2 = 0.088/2; % 1/2 wheel tread in m
         maxWheelVelocity = 0.3 % max of either wheel in m/sec
         
         rad = .165;             % robot body radius id 12.75/2 inches
         frontOffset = 6*0.0254; % front surface is 6 in fwd of axle center
         objOffset = 1.5*0.0254; % half of object width
-		laser_l = 0;       % laser offset
-		laser_rad = 0;       % laser housing radius
+		laser_l = -0.100;       % laser offset
+		laser_rad = 0.04;       % laser housing radius
         
-        tdelay = 0.2;          % comms delay (bidirectional)
+        tdelay = 0.25;          % comms delay (bidirectional)
     end
     
     properties(Access = private)
@@ -29,7 +28,8 @@ classdef robotModel < handle
     end
     
     methods(Static = true)
-        
+        %pose of sensor on robot, geometry of plastic body and delay 
+        %wireless should go in here too. 
         function [V , w] = vlvrToVw(vl, vr)
         % Converts wheel speeds to body linear and angular velocity.
             V = (vr + vl)/2.0;
