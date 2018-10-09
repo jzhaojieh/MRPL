@@ -18,9 +18,9 @@ classdef mrplSystem < handle
             xf3 = -0.3048; yf3 = 0.3048; thf3 = pi()/2.0;
             obj.executeTrajectoryToRelativePose(xf1, yf1, thf1, 1, 1);
             pause(.1);
-%             obj.executeTrajectoryToRelativePose(xf2, yf2, thf2, 1, 1);
+            obj.executeTrajectoryToRelativePose(xf2, yf2, thf2, 1, 1);
             pause(.1);
-%             obj.executeTrajectoryToRelativePose(xf3, yf3, thf3, 1, 1);
+            obj.executeTrajectoryToRelativePose(xf3, yf3, thf3, 1, 1);
             pause(.1);
         end
             
@@ -58,7 +58,6 @@ classdef mrplSystem < handle
                 timeFinal = obj.trajectoryObj.getTrajectoryDuration();
             end
             obj.robot.stop();
-            obj.robot.shutdown();
             
         end
     end
