@@ -268,11 +268,8 @@ classdef cubicSpiralTrajectory < handle
             y = 0;
             
             ds = sf/(obj.numSamples-1);
-            disp(ds)
             for i=1:obj.numSamples-1
                 s = i*ds;
-                disp(i)
-                disp(s)
                 k = s*(a + b*s)*(s - sf);
                 th = th + k*ds;
                 x = x + cos(th)*ds;
@@ -305,7 +302,6 @@ classdef cubicSpiralTrajectory < handle
 
                 obj.timeArray(i+1)= obj.timeArray(i)+ds/V;
             end
-            obj.timeArray(obj.numSamples) = [];
         end   
     end
             
@@ -470,9 +466,9 @@ classdef cubicSpiralTrajectory < handle
             if( t < obj.timeArray(1))
                 V = 0.0;
             else
+                disp(obj.timeArray)
+                disp(
                 
-           
-                obj.VArray(obj.numSamples) = [];
                 V  = interp1(obj.timeArray,obj.VArray,t,'pchip','extrap');  
             end
         end
@@ -481,13 +477,11 @@ classdef cubicSpiralTrajectory < handle
             if(t < obj.timeArray(1))
                 w = 0.0;
             else
-                obj.wArray(obj.numSamples) = [];
                 w  = interp1(obj.timeArray,obj.wArray,t,'pchip','extrap');  
             end
         end
             
         function pose  = getPoseAtTime(obj,t)
-            obj.poseArray(obj.numSamples) = [];
             x = interp1(obj.timeArray,obj.poseArray(1,:),t,'pchip','extrap');
             y = interp1(obj.timeArray,obj.poseArray(2,:),t,'pchip','extrap');
             th = interp1(obj.timeArray,obj.poseArray(3,:),t,'pchip','extrap');

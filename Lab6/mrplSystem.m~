@@ -19,8 +19,7 @@ classdef mrplSystem < handle
         end
             
         function executeTrajectoryToRelativePose(obj, x, y, th, sgn, iteration)
-            obj.trajectoryObj = cubicSpiralTrajectory([0,0,1], 1002);
-            obj.trajectoryObj.planTrajectory(x, y, th, sgn);
+            obj.trajectoryObj = cubicSpiralTrajectory.planTrajectory(x, y, th, sgn);
             obj.trajectoryObj.planVelocities(0.2);
             obj.executeTrajectory();
         end
@@ -42,13 +41,13 @@ classdef mrplSystem < handle
             %============================================
             while(t < timeFinal)
                 t = toc(start);
-                [vlFF, vrFF] = obj.trajFollower.feedForwardVel(obj.trajFollower, t);
+                [vlFF, vrFF] = trajFollow.feedForwardVel(trajFollow, t);
                 [vlFB, vrFB] = pid.giveError(pid, lRead, rRead, t);
                 vl = enable*vlFB + vlFF;
                 vr = enable*vrFB + vrFF;
                 obj.robot.sendVelocity(vl, vr);
                 pause(.05);
-                timeFinal = obj.trajFollower.getTrajectoryDuration(obj.trajFollower);
+                timeFinal = obj.trajFollower.getTrajectoryDuration(refCon);
             end
             obj.robot.stop();
             obj.robot.shutdown();
