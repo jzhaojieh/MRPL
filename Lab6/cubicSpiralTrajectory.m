@@ -273,7 +273,7 @@ classdef cubicSpiralTrajectory < handle
                 k = s*(a + b*s)*(s - sf);
                 th = th + k*ds;
                 x = x + cos(th)*ds;
-                y = y + cos(th)*ds;
+                y = y + sin(th)*ds;
                 obj.curvArray(i+1) = k;
                 obj.distArray(i+1) = s;
                 obj.poseArray(1,i+1) = x;

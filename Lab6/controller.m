@@ -8,6 +8,7 @@ classdef controller < handle
         roboTraj;
         lEnc;
         rEnc;
+        thArr;
         timeArr;
         actualPoses;
         linError;
@@ -20,12 +21,14 @@ classdef controller < handle
             initialPose = pose(0,0,0);
             obj.lEnc = [];
             obj.rEnc = [];
+            obj.thArr = [];
             obj.timeArr = [];
             obj.actualPoses = [];
             obj.linError = [];
             obj.angError = [];
             obj.lEnc = [obj.lEnc, lRead];
             obj.rEnc = [obj.rEnc, rRead];
+            obj.thArr = [obj.thArr, 0];
             obj.timeArr = [obj.timeArr, 0];
             obj.actualPoses = [obj.actualPoses, initialPose]; %robotCoord poses that were measured encoders
             obj.linError = [obj.linError, 0];
@@ -43,17 +46,18 @@ classdef controller < handle
             [V, w] = obj.rob.vlvrToVw(vl, vr);
             
             dTheta = w*(tcur - tprev);
+            curTh = obj.thArr(end) + dTheta;
             displacement = V*(tcur - tprev);
-            dx = displacement*sin(dTheta);
-            dy = displacement*cos(dTheta);
+            dx = displacement*cos(curTh);
+            dy = displacement*sin(curTh);
             
             prevX = pPose.x;
             prevY = pPose.y;
             prevTh = pPose.th;
-            curPose = pose(prevX + dx, prevY + dy, prevTh + dTheta);
+            curPose = pose(prevX + dx, prevY + dy, curTh);
             
             %----Convert World Coord to RobotCoord-------
-            correctPos = obj.roboTraj.getPoseAtTime(tcur);
+            correctPos = obj.roboTraj.getPoseAtTime(tcur-.25);
             corTh = correctPos(3);
 %             Twr = zeros(3,3);
 %             Twr(1,1) = cos(theta); Twr(1,2) = -sin(theta); Twr(1,3) = curPose.x;
@@ -77,7 +81,7 @@ classdef controller < handle
             
             errorX = rrp(1,1);
             errorY = rrp(2,1);
-            errorTh = atan2(sin(curPose.th-corTh), cos(curPose.th-corTh));
+            errorTh = atan2(sin(corTh-curPose.th), cos(corTh-curPose.th));
 
             %----Tau stuff--------
             tau = 0.25;
@@ -98,6 +102,7 @@ classdef controller < handle
             obj.actualPoses = [obj.actualPoses, curPose];
             obj.linError = [obj.linError, sqrt(errorX^2 + errorY^2)];
             obj.angError = [obj.angError, errorTh];
+            obj.thArr = [obj.thArr, curPose.th];
             %-----------------------------
         end
     end
