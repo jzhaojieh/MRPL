@@ -20,8 +20,8 @@ classdef trajectoryFollower < handle
             object.W2 = object.rob.W2;
             object.roboTraj = robotTraject;
         end
-        function [vl, vr] = feedForwardVel(obj, t)
-            V = object.roboTraj.getVelocity(t)
+        function [vl, vr] = feedForwardVel(object, t)
+            V = object.roboTraj.getVelocity(t);
             w = object.roboTraj.getW(t);
             pose = object.roboTraj.getPoseAtTime(t);
             

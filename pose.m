@@ -50,9 +50,9 @@ classdef pose < handle
             end
         end
         
-        function x = x(obj);   x   = obj.poseVec(1);  end        
-        function y = y(obj);   y   = obj.poseVec(2);  end      
-        function th = th(obj); th  = obj.poseVec(3);  end
+        function x = getX(obj);   x   = obj.poseVec(1);  end        
+        function y = getY(obj);   y   = obj.poseVec(2);  end      
+        function th = getTh(obj); th  = obj.poseVec(3);  end
         
         function p = getPoseVec(obj); p = obj.poseVec; end;
         

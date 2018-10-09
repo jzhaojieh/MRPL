@@ -6,18 +6,24 @@ classdef controller < handle
     properties(Access = public)
         rob;
         robTraj;
-        lEnc = [];
-        rEnc = [];
-        timeArr = [];
-        actualPoses = [];
-        linError = [];
-        angError = [];
+        lEnc;
+        rEnc;
+        timeArr;
+        actualPoses;
+        linError;
+        angError;
     end
     methods(Static = true)
         function obj = controller(robotModel, robotTrajectory, lRead, rRead)
             object.rob = robotModel;
             object.robTraj = robotTrajectory;
             initialPose = pose(0,0,0);
+            lEnc = [];
+            rEnc = [];
+            timeArr = [];
+            actualPoses = [];
+            linError = [];
+            angError = [];
             lEnc = [lEnc, lRead];
             rEnc = [rEnc, rRead];
             timeArr = [timeArr, 0];

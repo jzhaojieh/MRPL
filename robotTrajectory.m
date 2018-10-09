@@ -1,16 +1,15 @@
 classdef robotTrajectory < handle
     properties(Constant)
-        initialPose = pose(0,0,0)
     end
     properties(Access = public)
         numSamples;
         refCon;
         trajTotalTime;
-        timeArr = [];
-        distArr = [];
-        velArr = [];
-        wArr = [];
-        poseArr = [];
+        timeArr;
+        distArr;
+        velArr;
+        wArr;
+        poseArr;
     end
     properties(Access = private)
     end
@@ -18,14 +17,21 @@ classdef robotTrajectory < handle
         function obj = robotTrajectory(numberSamples, rC)
             object.numSamples = numberSamples;
             object.refCon = rC;
-            object.trajTotalTime = object.refCon.getTrajectoryDuration();
+            object.trajTotalTime = object.refCon.getTrajectoryDuration(object.refCon);
+            object.timeArr = [];
+            object.distArr = [];
+            object.velArr = [];
+            object.wArr = [];
+            object.poseArr = [];
+            initialPose = pose(0,0,0);
+          
             object.timeArr = [object.timeArr, 0];
             object.distArr = [object.distArr, 0];
             object.velArr = [object.velArr, 0];
             object.wArr = [object.wArr, 0];
-            object.poseArr = [object.poseArr, object.initialPose];
+            object.poseArr = [object.poseArr, initialPose];
         end
-        function generateSamples(obj)
+        function generateSamples(object)
             dt = object.trajTotalTime / object.numSamples;
             for i = 1:(object.numSamples - 1)
                 timeInterval = (i-1)*dt;
@@ -47,17 +53,17 @@ classdef robotTrajectory < handle
                 object.poseArr(i+1) = p;
             end
         end
-        function linVel = getVelocity(obj, t)
-            linVel = interpl(object.timeArr, transpose(obj.velArr), t);
+        function linVel = getVelocity(object, t)
+            linVel = interpl(object.timeArr, transpose(object.velArr), t);
         end
-        function angVel = getW(obj, t)
-            angVel = interpl(object.timeArr, transpose(obj.wArr), t);
+        function angVel = getW(object, t)
+            angVel = interpl(object.timeArr, transpose(object.wArr), t);
         end
-        function curDist = getDist(obj, t)
-            curDist = interpl(object.timeArr, transpose(obj.distArr), t);
+        function curDist = getDist(object, t)
+            curDist = interpl(object.timeArr, transpose(object.distArr), t);
         end
-        function curPose = getPoseAtTime(obj, t)
-            curPose = interpl(object.timeArr, transpose(obj.poseArr), t);
+        function curPose = getPoseAtTime(object, t)
+            curPose = interpl(object.timeArr, transpose(object.poseArr), t);
         end
     end
 end
