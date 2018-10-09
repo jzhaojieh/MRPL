@@ -53,8 +53,8 @@ classdef controller < handle
             curPose = pose(prevX + dx, prevY + dy, prevTh + dTheta);
             
             %----Convert World Coord to RobotCoord-------
-            correctPos = obj.roboTraj.getPoseAtTime(obj.roboTraj, tcur);
-            corTh = correctPos.th;
+            correctPos = obj.roboTraj.getPoseAtTime(tcur);
+            corTh = correctPos(3);
 %             Twr = zeros(3,3);
 %             Twr(1,1) = cos(theta); Twr(1,2) = -sin(theta); Twr(1,3) = curPose.x;
 %             Twr(2,1) = sin(theta); Twr(2,2) = cos(theta); Twr(2,3) = curPose.y;
@@ -65,10 +65,10 @@ classdef controller < handle
 %             rwp(1,1) = corX; rwp(2,1) = corY; rwp(3,1) = corTh;
             
             convertMatrix = zeros(2, 2);
-            convertMatrix(1,1) = cos(curPose.th); 
-            convertMatrix(1,2) = -sin(curPose.th);
-            convertMatrix(2,1) = sin(curPose.th); 
-            convertMatrix(2,2) = cos(curPose.th);
+            convertMatrix(1,1) = cos(corTh); 
+            convertMatrix(1,2) = -sin(corTh);
+            convertMatrix(2,1) = sin(corTh); 
+            convertMatrix(2,2) = cos(corTh);
             
             wrrp = zeros(2,1);
             wrrp(1,1) = curPose.x; wrrp(2,1) = curPose.y;

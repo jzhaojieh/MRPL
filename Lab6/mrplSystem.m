@@ -10,17 +10,24 @@ classdef mrplSystem < handle
     
     methods
         function obj = mrplSystem()
-%             obj.robot = raspbot('Raspbot-07');
-            obj.robot = raspbot('sim');
+            obj.robot = raspbot('Raspbot-07');
+%             obj.robot = raspbot('sim');
             pause(.1);
             xf1 = 0.3048; yf1 = 0.3048; thf1 = 0.0;
+            xf2 = -0.6096; yf2 = -0.6096; thf2 = -pi()/2.0;
+            xf3 = -0.3048; yf3 = 0.3048; thf3 = pi()/2.0;
             obj.executeTrajectoryToRelativePose(xf1, yf1, thf1, 1, 1);
+            pause(.1);
+%             obj.executeTrajectoryToRelativePose(xf2, yf2, thf2, 1, 1);
+            pause(.1);
+%             obj.executeTrajectoryToRelativePose(xf3, yf3, thf3, 1, 1);
             pause(.1);
         end
             
         function executeTrajectoryToRelativePose(obj, x, y, th, sgn, iteration)
-            obj.trajectoryObj = cubicSpiralTrajectory([0,0,1], 1002);
-            obj.trajectoryObj.planTrajectory(x, y, th, sgn);
+            obj.trajectoryObj = cubicSpiralTrajectory.planTrajectory(x, y, th, sgn);
+%             obj.trajectoryObj.refineParameters(pose(xf1, yf1, thf1));
+%             obj.trajectoryObj.planTrajectory(x, y, th, sgn);
             obj.trajectoryObj.planVelocities(0.2);
             obj.executeTrajectory();
         end
@@ -48,7 +55,7 @@ classdef mrplSystem < handle
                 vr = enable*vrFB + vrFF;
                 obj.robot.sendVelocity(vl, vr);
                 pause(.05);
-                timeFinal = obj.trajFollower.getTrajectoryDuration(obj.trajFollower);
+                timeFinal = obj.trajectoryObj.getTrajectoryDuration();
             end
             obj.robot.stop();
             obj.robot.shutdown();

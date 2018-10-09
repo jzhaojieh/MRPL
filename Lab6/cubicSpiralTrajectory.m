@@ -121,7 +121,7 @@ classdef cubicSpiralTrajectory < handle
                         n = 0;
                         elapsedTime = toc(startTic);
                         fprintf('Took %f minutes\n',elapsedTime/60.0);
-                    end;
+                    end
                     n = n + 1;
                     % Store coefficients.
                     r1Now = r1Tab.get(q,t);
@@ -195,7 +195,7 @@ classdef cubicSpiralTrajectory < handle
             end
             if(isinf(a2) || isinf(b2))
                 twoBad = true;
-            end;
+            end
 
             % Pick sole good one or the least curvy
             % I tried with and without this and it makes a huge difference! 
@@ -268,20 +268,17 @@ classdef cubicSpiralTrajectory < handle
             y = 0;
             
             ds = sf/(obj.numSamples-1);
-            disp(ds)
             for i=1:obj.numSamples-1
                 s = i*ds;
-                disp(i)
-                disp(s)
                 k = s*(a + b*s)*(s - sf);
                 th = th + k*ds;
                 x = x + cos(th)*ds;
                 y = y + cos(th)*ds;
-                obj.curvArray(i) = k;
-                obj.distArray(i) = s;
-                obj.poseArray(1,i) = x;
-                obj.poseArray(2,i) = y;
-                obj.poseArray(3,i) = th;
+                obj.curvArray(i+1) = k;
+                obj.distArray(i+1) = s;
+                obj.poseArray(1,i+1) = x;
+                obj.poseArray(2,i+1) = y;
+                obj.poseArray(3,i+1) = th;
             end
             i = obj.numSamples;
             s = (i-1)*ds;  
@@ -305,7 +302,6 @@ classdef cubicSpiralTrajectory < handle
 
                 obj.timeArray(i+1)= obj.timeArray(i)+ds/V;
             end
-            obj.timeArray(obj.numSamples) = [];
         end   
     end
             
@@ -472,7 +468,7 @@ classdef cubicSpiralTrajectory < handle
             else
                 
            
-                obj.VArray(obj.numSamples) = [];
+                
                 V  = interp1(obj.timeArray,obj.VArray,t,'pchip','extrap');  
             end
         end
@@ -481,13 +477,12 @@ classdef cubicSpiralTrajectory < handle
             if(t < obj.timeArray(1))
                 w = 0.0;
             else
-                obj.wArray(obj.numSamples) = [];
+              
                 w  = interp1(obj.timeArray,obj.wArray,t,'pchip','extrap');  
             end
         end
             
         function pose  = getPoseAtTime(obj,t)
-            obj.poseArray(obj.numSamples) = [];
             x = interp1(obj.timeArray,obj.poseArray(1,:),t,'pchip','extrap');
             y = interp1(obj.timeArray,obj.poseArray(2,:),t,'pchip','extrap');
             th = interp1(obj.timeArray,obj.poseArray(3,:),t,'pchip','extrap');
