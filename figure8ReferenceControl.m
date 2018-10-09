@@ -1,20 +1,20 @@
 classdef figure8ReferenceControl < handle
     properties(Constant)
-        sf = 1; 
-        kk = 15.1084;
     end
     properties(Access = private)
     end
     properties(Access = public)
+        sf; 
+        kk;
         ks;
         kv;
         timeDelay;
-        vt = 0.2; 
+        vt; 
         tf;
-        ktheta = 2*pi/sf;
-        st = vt*t;
-        k = kk/ks*sin(ktheta*st);
-        wt = k*vt;
+        ktheta;
+        st;
+        k;
+        wt;
         Tf;
         V;
     end
@@ -29,30 +29,35 @@ classdef figure8ReferenceControl < handle
             %v = 0.1; w = kw*t; kw = 1/8
             %vr = v + W/2*angularVelocity
             %vl = v - W/2*angularVelocity 
-            object.ks = Ks;
-            object.kv = Kv;
-            object.timeDelay = tPause;
+            obj.sf = 1; 
+            obj.kk = 15.1084;
+            obj.ks = Ks;
+            obj.kv = Kv;
+            obj.vt = 0.2;
+            obj.ktheta = 2*pi/obj.sf;
+            obj.timeDelay = tPause;
             if(Kv > 1)
-                object.vt = object.vt*Kv;
+                obj.vt = obj.vt*Kv;
             end
-            object.tf = object.sf/object.vt;
-            object.ktheta = 2*pi/object.sf;
-            object.Tf = (object.ks/object.kv)*object.tf;
+            obj.tf = obj.sf/obj.vt;
+            obj.ktheta = 2*pi/obj.sf;
+            obj.Tf = (obj.ks/obj.kv)*obj.tf;
         end
         function [V, w] = computeControl(obj, timeNow)
             %Return the linear and angular velocity that the
             %robot should be executing at the time timeNow. Any zero
             %velocity pauses specified in the constructure are implemented
             %here
-            t = (object.kv/object.ks)*(timeNow-object.timeDelay);
-            object.st = vt*t;
-            object.k = object.kk/object.ks*sin(object.ktheta*object.st);
-            V = object.kv*object.vt;
-            w = object.k*object.V;
+            t = (obj.kv/obj.ks)*(timeNow-obj.timeDelay);
+            obj.st = obj.vt*t;
+            obj.k = obj.kk/obj.ks*sin(obj.ktheta*obj.st);
+            V = obj.kv*obj.vt;
+            w = obj.k*V;
         end
         function duration = getTrajectoryDuration(obj)
             %Return the total time required for motion and for the initial
             %and terminal pauses. 
-            duration = object.Tf + 2*object.timeDelay;
+            duration = obj.Tf + 2*obj.timeDelay;
         end
     end
+end
