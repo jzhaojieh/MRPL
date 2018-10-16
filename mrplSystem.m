@@ -12,6 +12,10 @@ classdef mrplSystem < handle
             corXArr
             corYArr
             idealPoses
+            encoderTimeStamp
+            tstamp
+            newenc
+            tprev
     end
     
     methods
@@ -32,6 +36,12 @@ classdef mrplSystem < handle
             obj.corXArr = [];
             obj.corYArr = [];
             obj.idealPoses = pose(0,0,0);
+            
+            obj.encoderTimeStamp = 0;
+            obj.tstamp = 0;
+            obj.newenc = [0,0];
+            obj.tprev = 0;
+            obj.robot.encoders.NewMessageFcn=@obj.encoderEventListener;
         end
             
         function executeTrajectoryRelativeToPose(obj, x, y, th, sgn)
@@ -45,18 +55,26 @@ classdef mrplSystem < handle
             obj.trajFollower = trajectoryFollower(obj.rob, obj.trajectoryObj);
             
             prevIdealPose = obj.idealPoses(end);
-            disp([prevIdealPose.x, prevIdealPose.y, prevIdealPose.th])
             
-            start = tic;
-            t = toc(start);
+            obj.tstamp = obj.encoderTimeStamp;
+            t = 0;
             timeFinal = 100;
+            
+            vl = 0;
+            vr = 0;
             
             while(t < timeFinal)
                 
-                lRead = obj.robot.encoders.LatestMessage.Vector.X;
-                rRead = obj.robot.encoders.LatestMessage.Vector.Y;
+                lRead = obj.newenc(1);
+                rRead = obj.newenc(2);
                 
-                t = toc(start);
+                t = obj.encoderTimeStamp - obj.tstamp;
+                
+                if t == obj.tprev
+                    obj.robot.sendVelocity(vl, vr);
+                    pause(.005)
+                    continue
+                end
                 
                 corRelPose = obj.trajectoryObj.getPoseAtTime(t);
                 worldPose = pose(0,0,prevIdealPose.th);
@@ -86,20 +104,31 @@ classdef mrplSystem < handle
                     title("Correct Pose of Trajectory in meters");
                     xlabel("X distance (m)");
                     ylabel("Y distance (m)");
-                
+                    
                     subplot(1,2,2);
-                    plot(obj.pid.actualXs, obj.pid.actualYs);
+                    [actualXs, actualYs] = obj.pid.actualXY(obj.pid);
+                    plot(actualXs, actualYs);
                     title("Current Pose of Trajectory in meters");
                     xlabel("X distance (m)");
                     ylabel("Y distance (m)");
                 
                 end
                 
-                pause(.01);
+                obj.tprev = t;
+                pause(.005);
                 timeFinal = obj.trajectoryObj.getTrajectoryDuration();
             end
+            obj.tstamp = 0;
             obj.robot.stop();
         end
-    end
         
+        function encoderEventListener(obj, handle, event)
+            if obj.tstamp == 0
+                obj.tstamp = double(event.Header.Stamp.Sec) + double(event.Header.Stamp.Nsec)/1e9;
+            end
+            obj.encoderTimeStamp = double(event.Header.Stamp.Sec) + double(event.Header.Stamp.Nsec)/1e9;
+            e = [obj.robot.encoders.LatestMessage.Vector.X, obj.robot.encoders.LatestMessage.Vector.Y];
+            obj.newenc = e;
+        end
+    end
 end

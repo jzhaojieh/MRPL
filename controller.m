@@ -37,6 +37,8 @@ classdef controller < handle
             obj.linError = [obj.linError, 0];
             obj.angError = [obj.angError, 0];
         end
+        
+        
         function [uv, uw] = giveError(obj, lRead, rRead, tcur, correctPos)
             %curPose is where robot is now, derived from lRead, rRead
             pPose = obj.actualPoses(end); %previous pose 
@@ -48,15 +50,16 @@ classdef controller < handle
             vr = (rRead - prEnc) / (tcur - tprev);
             [V, w] = obj.rob.vlvrToVw(vl, vr);
             
+            prevX = pPose.x;
+            prevY = pPose.y;
+            prevTh = pPose.th;
+            
             dTheta = w*(tcur - tprev);
-            curTh = obj.thArr(end) + dTheta;
+            curTh = prevTh + dTheta;
             displacement = V*(tcur - tprev);
             dx = displacement*cos(curTh);
             dy = displacement*sin(curTh);
             
-            prevX = pPose.x;
-            prevY = pPose.y;
-            prevTh = pPose.th;
             curPose = pose(prevX + dx, prevY + dy, curTh);
             
             errorX = correctPos.x - curPose.x;
@@ -64,7 +67,7 @@ classdef controller < handle
             errorTh = atan2(sin(correctPos.th-curPose.th), cos(correctPos.th-curPose.th));
 
             %----Tau stuff--------
-            tau = 50;
+            tau = 40;
             kx = 1/tau;
             ky = 2/(tau^2*abs(V));
             kth = 1/tau;
@@ -86,6 +89,11 @@ classdef controller < handle
             obj.angError = [obj.angError, errorTh];
             obj.thArr = [obj.thArr, curPose.th];
             %-----------------------------
+        end
+        
+        function [a, b] = actualXY(obj)
+            a = obj.actualXs;
+            b = obj.actualYs;
         end
     end
 end

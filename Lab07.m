@@ -19,13 +19,11 @@ xf3 = -0.3048; yf3 = 0.3048; thf3 = pi()/2.0;
 
 %%%%%Execute Trajectories%%%%%
 
-pause(.1);
 RobotSystem.executeTrajectoryRelativeToPose(xf1, yf1, thf1, 1);
-pause(.1);
 RobotSystem.executeTrajectoryRelativeToPose(xf2, yf2, thf2, 1);
-pause(.1);
 RobotSystem.executeTrajectoryRelativeToPose(xf3, yf3, thf3, 1);
-pause(.1);
+
+disp([RobotSystem.pid.actualPoses(end).x, RobotSystem.pid.actualPoses(end).y, RobotSystem.pid.actualPoses(end).th]);
 
 %%%%%%%%Shutdown Robot%%%%%%%%
 
