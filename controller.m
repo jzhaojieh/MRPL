@@ -5,83 +5,71 @@ classdef controller < handle
     end
     properties(Access = public)
         rob;
-        robTraj;
+        roboTraj;
         lEnc;
         rEnc;
+        thArr;
         timeArr;
         actualPoses;
+        actualXs;
+        actualYs;
         linError;
         angError;
     end
     methods(Static = true)
-        function obj = controller(robotModel, robotTrajectory, lRead, rRead)
-            object.rob = robotModel;
-            object.robTraj = robotTrajectory;
+        function obj = controller(robotModel, lRead, rRead)
+            obj.rob = robotModel;
             initialPose = pose(0,0,0);
-            lEnc = [];
-            rEnc = [];
-            timeArr = [];
-            actualPoses = [];
-            linError = [];
-            angError = [];
-            lEnc = [lEnc, lRead];
-            rEnc = [rEnc, rRead];
-            timeArr = [timeArr, 0];
-            actualPoses = [actualPoses, initialPose]; %robotCoord poses that were measured encoders
-            linError = [linError, 0];
-            angError = [angError, 0];
+            obj.lEnc = [];
+            obj.rEnc = [];
+            obj.thArr = [];
+            obj.timeArr = [];
+            obj.actualPoses = [];
+            obj.actualXs = [];
+            obj.actualYs = [];
+            obj.linError = [];
+            obj.angError = [];
+            obj.lEnc = [obj.lEnc, lRead];
+            obj.rEnc = [obj.rEnc, rRead];
+            obj.thArr = [obj.thArr, 0];
+            obj.timeArr = [obj.timeArr, 0];
+            obj.actualPoses = [obj.actualPoses, initialPose]; %robotCoord poses that were measured encoders
+            obj.linError = [obj.linError, 0];
+            obj.angError = [obj.angError, 0];
         end
-        function [uv, uw] = giveError(lRead, rRead, tcur)
+        
+        
+        function [uv, uw] = giveError(obj, lRead, rRead, tcur, correctPos)
             %curPose is where robot is now, derived from lRead, rRead
-            pPose = actualPoses(end); %previous pose 
-            plEnc = lEnc(end); %previous lEnc
-            prEnc = rEnc(end); %previous rEnc
-            tprev = timeArr(end);
+            pPose = obj.actualPoses(end); %previous pose 
+            plEnc = obj.lEnc(end); %previous lEnc
+            prEnc = obj.rEnc(end); %previous rEnc
+            tprev = obj.timeArr(end);
             
-            vl = (lEnc - plEnc) / (tcur - tprev);
-            vr = (rEnc - prEnc) / (tcur - tprev);
-            [V, w] = object.rob.vlvrToVw(vl, vr);
-            
-            dTheta = w*(tcur - tprev);
-            displacement = V*(tcur - tprev);
-            dx = displacement*sin(dTheta);
-            dy = displacement*cos(dTheta);
+            vl = (lRead - plEnc) / (tcur - tprev);
+            vr = (rRead - prEnc) / (tcur - tprev);
+            [V, w] = obj.rob.vlvrToVw(vl, vr);
             
             prevX = pPose.x;
             prevY = pPose.y;
             prevTh = pPose.th;
             
-            curPose = pose(prevX + dx, prevY + dy, prevTh + th);
+            dTheta = w*(tcur - tprev);
+            curTh = prevTh + dTheta;
+            displacement = V*(tcur - tprev);
+            dx = displacement*cos(curTh);
+            dy = displacement*sin(curTh);
             
-            %----Convert World Coord to RobotCoord-------
-            correctPos = object.roboTraj.getPoseAtTime(tcur);
-            corX = correctPos.x;
-            corY = correctPos.y;
-            corTh = correctPos.th;
-%             Twr = zeros(3,3);
-%             Twr(1,1) = cos(theta); Twr(1,2) = -sin(theta); Twr(1,3) = curPose.x;
-%             Twr(2,1) = sin(theta); Twr(2,2) = cos(theta); Twr(2,3) = curPose.y;
-%             Twr(3,1) = 0; Twr(3,2) = 0; Twr(3,3) = 1;
-%             TwrInv = inv(Twr);
-%             
-%             rwp = zeros(3,1);
-%             rwp(1,1) = corX; rwp(2,1) = corY; rwp(3,1) = corTh;
+            curPose = pose(prevX + dx, prevY + dy, curTh);
             
-            convertMatrix = zeros(2, 2);
-            convertMatrix(1,1) = cos(curPose.th); convertMatrix(1,2) = -sin(curPose.th);
-            convertMatrix(2,1) = sin(curPose.th); convertMatrix(2,2) = cos(curPose.th);
+            errorX = correctPos.x - curPose.x;
+            errorY = correctPos.y - curPose.y;
+            errorTh = atan2(sin(correctPos.th-curPose.th), cos(correctPos.th-curPose.th));
             
-            wrrp = zeros(2,1);
-            wrrp(1,1) = curPose.x; wrrp(2,1) = curPose.y;
-            
-            rrp = convertMatrix*wrrp;
-            
-            errorX = rrp(1,1);
-            errorY = rrp(2,1);
-            errorTh = atan2(sin(curPose.th-corTh), cos(curPose.th-corTh));
+            errorConverted = curPose.bToARot() * [errorX; errorY];
 
             %----Tau stuff--------
-            tau = 0.25;
+            tau = 40;
             kx = 1/tau;
             ky = 2/(tau^2*abs(V));
             kth = 1/tau;
@@ -90,16 +78,24 @@ classdef controller < handle
             if V < .001
                 ky = 0;
             end
-            uv = kx*errorX;
-            uw = ky*errorY + kth*errorTh;
+            uv = kx*errorConverted(1);
+            uw = ky*errorConverted(2) + kth*errorTh;
             
-            lEnc = [lEnc, lRead];
-            rEnc = [rEnc, rRead];
-            timeArr = [timeArr, tcur];
-            actualPoses = [actualPoses, curPose];
-            linError = [linError, sqrt(errorX^2 + errorY^2)];
-            angError = [angError, errorTh];
+            obj.lEnc = [obj.lEnc, lRead];
+            obj.rEnc = [obj.rEnc, rRead];
+            obj.timeArr = [obj.timeArr, tcur];
+            obj.actualPoses = [obj.actualPoses, curPose];
+            obj.actualXs = [obj.actualXs, curPose.x];
+            obj.actualYs = [obj.actualYs, curPose.y];
+            obj.linError = [obj.linError, sqrt(errorX^2 + errorY^2)];
+            obj.angError = [obj.angError, errorTh];
+            obj.thArr = [obj.thArr, curPose.th];
             %-----------------------------
+        end
+        
+        function [a, b] = actualXY(obj)
+            a = obj.actualXs;
+            b = obj.actualYs;
         end
     end
 end

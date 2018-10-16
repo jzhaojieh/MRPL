@@ -9,61 +9,69 @@ classdef robotTrajectory < handle
         distArr;
         velArr;
         wArr;
-        poseArr;
+        poseXArr;
+        poseYArr;
+        poseThArr;
     end
     properties(Access = private)
     end
     methods(Static = true)
         function obj = robotTrajectory(numberSamples, rC)
-            object.numSamples = numberSamples;
-            object.refCon = rC;
-            object.trajTotalTime = object.refCon.getTrajectoryDuration(object.refCon);
-            object.timeArr = [];
-            object.distArr = [];
-            object.velArr = [];
-            object.wArr = [];
-            object.poseArr = [];
-            initialPose = pose(0,0,0);
+            obj.numSamples = numberSamples;
+            obj.refCon = rC;
+            obj.trajTotalTime = obj.refCon.getTrajectoryDuration(obj.refCon);
+            obj.timeArr = [];
+            obj.distArr = [];
+            obj.velArr = [];
+            obj.wArr = [];
+            obj.poseXArr = [];
+            obj.poseYArr =[];
+            obj.poseThArr = [];
           
-            object.timeArr = [object.timeArr, 0];
-            object.distArr = [object.distArr, 0];
-            object.velArr = [object.velArr, 0];
-            object.wArr = [object.wArr, 0];
-            object.poseArr = [object.poseArr, initialPose];
+            obj.timeArr = [obj.timeArr, 0];
+            obj.distArr = [obj.distArr, 0];
+            obj.velArr = [obj.velArr, 0];
+            obj.wArr = [obj.wArr, 0];
+            obj.poseXArr = [obj.poseXArr, 0];
+            obj.poseYArr =[obj.poseYArr, 0];
+            obj.poseThArr = [obj.poseThArr, 0];
         end
-        function generateSamples(object)
-            dt = object.trajTotalTime / object.numSamples;
-            for i = 1:(object.numSamples - 1)
+        function generateSamples(obj)
+            dt = obj.trajTotalTime / obj.numSamples;
+            for i = 1:(obj.numSamples - 1)
                 timeInterval = (i-1)*dt;
-                [V, w] = object.refCon.computeControl(timeInterval);
+                [V, w] = obj.refCon.computeControl(obj.refCon, timeInterval);
                 
                 %------THIS PART MIGHT BE WRONG-------
-                angle = wArr(i) + (w*dt);
+                angle = obj.wArr(i) + (w*dt);
                 x = V*dt*sin(angle);
                 y = V*dt*cos(angle);
-                %I'M NOT SURE IF THIS IS p(i+1) AS REQUIRED???
-                p = pose(x, y, angle);
                 %--------------------------------------
                 
                 %updates
-                object.timeArr = [object.timeArr, timeInterval];
-                object.velArr = [object.velArr, V];
-                object.wArr = [object.wArr, w];
-                object.distArr(i+1) = object.distArr(i) + (V*dt);
-                object.poseArr(i+1) = p;
+                obj.timeArr = [obj.timeArr, timeInterval];
+                obj.velArr = [obj.velArr, V];
+                obj.wArr = [obj.wArr, w];
+                obj.distArr(i+1) = obj.distArr(i) + (V*dt);
+                obj.poseXArr(i+1) = x;
+                obj.poseYArr(i+1) = y;
+                obj.poseThArr(i+1) = angle;
             end
         end
-        function linVel = getVelocity(object, t)
-            linVel = interpl(object.timeArr, transpose(object.velArr), t);
+        function linVel = getVelocity(obj, t)
+            linVel = interp1q(obj.timeArr, transpose(obj.velArr), t);
         end
-        function angVel = getW(object, t)
-            angVel = interpl(object.timeArr, transpose(object.wArr), t);
+        function angVel = getW(obj, t)
+            angVel = interp1q(obj.timeArr, transpose(obj.wArr), t);
         end
-        function curDist = getDist(object, t)
-            curDist = interpl(object.timeArr, transpose(object.distArr), t);
+        function curDist = getDist(obj, t)
+            curDist = interp1q(obj.timeArr, transpose(obj.distArr), t);
         end
-        function curPose = getPoseAtTime(object, t)
-            curPose = interpl(object.timeArr, transpose(object.poseArr), t);
+        function curPose = getPoseAtTime(obj, t)
+            curX = interp1q(obj.timeArr, transpose(obj.poseXArr), t);
+            curY = interp1q(obj.timeArr, transpose(obj.poseYArr), t);
+            curTh = interp1q(obj.timeArr, transpose(obj.poseThArr), t);
+            curPose = pose(curX, curY, curTh);
         end
     end
 end
