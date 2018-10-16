@@ -59,9 +59,9 @@ classdef controller < handle
             prevTh = pPose.th;
             curPose = pose(prevX + dx, prevY + dy, curTh);
             
-            errorX = correctPos(1) - curPose.x;
-            errorY = correctPos(2) - curPose.y;
-            errorTh = atan2(sin(correctPos(3)-curPose.th), cos(correctPos(3)-curPose.th));
+            errorX = correctPos.x - curPose.x;
+            errorY = correctPos.y - curPose.y;
+            errorTh = atan2(sin(correctPos.th-curPose.th), cos(correctPos.th-curPose.th));
 
             %----Tau stuff--------
             tau = 50;

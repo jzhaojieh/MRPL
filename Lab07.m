@@ -7,7 +7,7 @@ clear classes;
 
 sim =       0  ;
 plot =      1  ;
-feedback =  0  ;
+feedback =  1  ;
 
 RobotSystem = mrplSystem(sim, plot, feedback);
 

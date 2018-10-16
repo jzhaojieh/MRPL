@@ -32,6 +32,7 @@ classdef mrplSystem < handle
             obj.corXArr = [];
             obj.corYArr = [];
             obj.idealPoses = pose(0,0,0);
+            
         end
             
         function executeTrajectoryRelativeToPose(obj, x, y, th, sgn)
