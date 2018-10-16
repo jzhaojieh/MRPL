@@ -57,16 +57,8 @@ classdef controller < handle
             curPose = pose(prevX + dx, prevY + dy, curTh);
             
             %----Convert World Coord to RobotCoord-------
-            correctPos = obj.roboTraj.getPoseAtTime(tcur-.25);
+            correctPos = obj.roboTraj.getPoseAtTime(tcur);
             corTh = correctPos(3);
-%             Twr = zeros(3,3);
-%             Twr(1,1) = cos(theta); Twr(1,2) = -sin(theta); Twr(1,3) = curPose.x;
-%             Twr(2,1) = sin(theta); Twr(2,2) = cos(theta); Twr(2,3) = curPose.y;
-%             Twr(3,1) = 0; Twr(3,2) = 0; Twr(3,3) = 1;
-%             TwrInv = inv(Twr);
-%             
-%             rwp = zeros(3,1);
-%             rwp(1,1) = corX; rwp(2,1) = corY; rwp(3,1) = corTh;
             
             convertMatrix = zeros(2, 2);
             convertMatrix(1,1) = cos(corTh); 
@@ -84,7 +76,7 @@ classdef controller < handle
             errorTh = atan2(sin(corTh-curPose.th), cos(corTh-curPose.th));
 
             %----Tau stuff--------
-            tau = 0.25;
+            tau = 200;
             kx = 1/tau;
             ky = 2/(tau^2*abs(V));
             kth = 1/tau;

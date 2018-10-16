@@ -10,7 +10,7 @@ classdef mrplSystem < handle
     
     methods
         function obj = mrplSystem()
-            obj.robot = raspbot('raspberrybot #7 MRPL af');
+            obj.robot = raspbot('rhaspberrybutt');
             pause(.1);
             xf1 = 0.3048; yf1 = 0.3048; thf1 = 0.0;
             xf2 = -0.6096; yf2 = -0.6096; thf2 = -pi()/2.0;
@@ -42,7 +42,7 @@ classdef mrplSystem < handle
             t = toc(start);
 
             %=========TOGGLE PID========================
-            enable = 0;
+            enable = 1;
             timeFinal = 100;
             %============================================
             actualXArr = [];
@@ -84,7 +84,7 @@ classdef mrplSystem < handle
                 xlabel("X distance (m)");
                 ylabel("Y distance (m)");
                 
-                pause(.05);
+                pause(.02);
                 timeFinal = obj.trajectoryObj.getTrajectoryDuration();
             end
             obj.robot.stop();
