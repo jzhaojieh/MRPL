@@ -1,0 +1,104 @@
+classdef mrplSystem < handle
+    
+    properties
+            controllerObj,
+            robot,
+            trajectoryObj,
+            trajFollower,
+            rob
+            enablePlot
+            enableFeedback
+            pid
+            corXArr
+            corYArr
+            idealPoses
+    end
+    
+    methods
+        function obj = mrplSystem(sim, enablePlot, enableFeedback)
+            if(sim)
+                obj.robot = raspbot('sim');
+            else
+                obj.robot = raspbot('not sim');
+            end
+            obj.enablePlot = enablePlot;
+            obj.enableFeedback = enableFeedback;
+            obj.rob = robotModel();
+            
+            lRead = obj.robot.encoders.LatestMessage.Vector.X;
+            rRead = obj.robot.encoders.LatestMessage.Vector.Y;
+            obj.pid = controller(obj.rob, lRead, rRead);
+            
+            obj.corXArr = [];
+            obj.corYArr = [];
+            obj.idealPoses = [pose(0,0,0)];
+        end
+            
+        function executeTrajectoryRelativeToPose(obj, x, y, th, sgn)
+            obj.trajectoryObj = cubicSpiralTrajectory.planTrajectory(x, y, th, sgn);
+            obj.trajectoryObj.planVelocities(0.2);
+            obj.executeTrajectory();
+        end
+        
+
+        function executeTrajectory(obj)
+            obj.trajFollower = trajectoryFollower(obj.rob, obj.trajectoryObj);
+            
+            prevIdealPose = obj.idealPoses(end);
+            disp([prevIdealPose.x, prevIdealPose.y, prevIdealPose.th])
+            
+            start = tic;
+            t = toc(start);
+            timeFinal = 100;
+            
+            while(t < timeFinal)
+                
+                lRead = obj.robot.encoders.LatestMessage.Vector.X;
+                rRead = obj.robot.encoders.LatestMessage.Vector.Y;
+                
+                t = toc(start);
+                
+                corRelPose = obj.trajectoryObj.getPoseAtTime(t);
+                
+                %%%%%Convert relativd coords to world coords%%%%%
+                corPose = prevIdealPose.bToA * [corRelPose(1); corRelPose(2); corRelPose(3)];
+
+                obj.idealPoses = [obj.idealPoses, pose(corPose(1) + prevIdealPose.x, corPose(2) + prevIdealPose.y, corPose(3) + prevIdealPose.th)];
+                
+                [vlFF, vrFF] = obj.trajFollower.feedForwardVel(obj.trajFollower, t);
+                [vlFB, vrFB] = obj.pid.giveError(obj.pid, lRead, rRead, t, corPose);
+                
+                vl = obj.enableFeedback*vlFB + vlFF;
+                vr = obj.enableFeedback*vrFB + vrFF;
+                obj.robot.sendVelocity(vl, vr);
+                
+                corX = obj.idealPoses(end).x;
+                corY = obj.idealPoses(end).y;
+                
+                obj.corXArr = [obj.corXArr, corX];
+                obj.corYArr = [obj.corYArr, corY];
+                
+                if(obj.enablePlot)
+                
+                    subplot(1,2,1);
+                    plot(obj.corXArr, obj.corYArr);
+                    title("Correct Pose of Trajectory in meters");
+                    xlabel("X distance (m)");
+                    ylabel("Y distance (m)");
+                
+                    subplot(1,2,2);
+                    plot(obj.pid.actualXs, obj.pid.actualYs);
+                    title("Current Pose of Trajectory in meters");
+                    xlabel("X distance (m)");
+                    ylabel("Y distance (m)");
+                
+                end
+                
+                pause(.02);
+                timeFinal = obj.trajectoryObj.getTrajectoryDuration();
+            end
+            obj.robot.stop();
+        end
+    end
+        
+end
