@@ -10,7 +10,7 @@ classdef mrplSystem < handle
     
     methods
         function obj = mrplSystem()
-            obj.robot = raspbot('rhaspberrybutt');
+            obj.robot = raspbot('Raspbot-07');
             pause(.1);
             xf1 = 0.3048; yf1 = 0.3048; thf1 = 0.0;
             xf2 = -0.6096; yf2 = -0.6096; thf2 = -pi()/2.0;
