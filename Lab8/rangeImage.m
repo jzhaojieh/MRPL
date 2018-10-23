@@ -24,7 +24,7 @@ classdef rangeImage < handle
                 for i=1:skip:length(ranges)
                     n = n + 1;
                     obj.rArray(n) = ranges(i);
-                    obj.tArray(n) = (i-1)*(pi/180);
+                    obj.tArray(n) = (i-6)*(pi/180);
                     obj.xArray(n) = ranges(i)*cos(obj.tArray(n));
                     obj.yArray(n) = ranges(i)*sin(obj.tArray(n));
                 end
@@ -58,43 +58,53 @@ classdef rangeImage < handle
             %% FILL ME IN
          end
 
-         function [err num th] = findLineCandidate(obj,middle,maxLen)
+         function [centroidX, centroidY, th] = findLineCandidate(obj)
          % Find the longest sequence of pixels centered at pixel
          % ?middle? whose endpoints are separated by a length less
          % than the provided maximum. Return the line fit error, the
          % number of pixels participating, and the angle of
          % the line relative to the sensor.
-         expectedPts = 8;
-         pointSetX = zeros(expectedPts); pointSetY = zeros(expectedPts);
-         pointSetX(expectedPts/2) = obj.xArray(middle);
-         pointSetY(expectedPts/2) = obj.yArray(middle);
-         decrement = middle;
-         increment = middle;
-         for i = 1:(expectedPts/2 - 1)
-             obj.inc(increment);
-             obj.dec(decrement);
-             pointSetX(expectedPts/2 + i) = obj.xArray(increment);
-             pointSetY(expectedPts/2 + i) = obj.xArray(increment);
-             pointSetX(expectedPts/2 - i) = obj.xArray(decrement);
-             pointSetY(expectedPts/2 - i) = obj.xArray(decrement);
-         end
-         numPoints = length(pointSetX);
-         centroidX = mean(pointSetX);
-         centroidY = mean(pointSetY);
-         psXC = pointSetX - centroidX;
-         psYC = pointSetY - centroidY;
-         Ixx = sum(psXC.^2);
-         Iyy = sum(psYC.^2);
-         Ixy = sum(-1*(psXC.*psYC));
-         Inertia = [Ixx, Ixy;Ixy, Iyy] / numPoints;
-         lambda = eig(Inertia);
-         lambda = sqrt(lambda)*1000.0;
-            leftX = min(pointSetX);
-            rightX = max(pointSetX);
-            topY = max(pointSetY);
-            botY = min(pointSetY);
-            diag = sqrt((rightX - leftX)^2 + (botY - topY)^2);
-            th = atan2(2*Ixy,Iyy-Ixx)/2.0;
+         maxDist = 4.0;
+        % Compute the angles of surviving points
+        centroidX = 0;
+        centroidY = 0;
+        th = 0;
+        for i = 1:length(obj.rArray)
+
+            pointSetX = []; pointSetY = [];
+            x = obj.xArray(i); y = obj.yArray(i);
+            for j = 1:length(obj.rArray)
+                otherX = obj.xArray(j); otherY = obj.yArray(j);
+                dist = sqrt((otherX - x)^2 + (otherY - y)^2);
+                if dist <= obj.sailDistance/2 + obj.threshold
+                    pointSetX = [pointSetX otherX];
+                    pointSetY = [pointSetY otherY];
+                end
+            end
+            numPoints = length(pointSetX);
+            centroidX = mean(pointSetX);
+            centroidY = mean(pointSetY);
+            dist = sqrt(centroidX^2 + centroidY^2);
+            psXC = pointSetX - centroidX;
+            psYC = pointSetY - centroidY;
+            Ixx = sum(psXC.^2);
+            Iyy = sum(psYC.^2);
+            Ixy = sum(-1*(psXC.*psYC));
+            Inertia = [Ixx Ixy;Ixy Iyy] / numPoints;
+            lambda = eig(Inertia);
+            lambda = sqrt(lambda)*1000.0;
+            if ((numPoints >= 7) && (lambda(1) < 1.3) && dist < maxDist)
+                leftX = min(pointSetX);
+                rightX = max(pointSetX);
+                topY = max(pointSetY);
+                botY = min(pointSetY);
+                diag = sqrt((rightX - leftX)^2 + (botY - topY)^2);
+                if diag < obj.sailDistance
+                    th = atan2(2*Ixy,Iyy-Ixx)/2.0;
+                    break
+                end
+            end
+        end
          end
 
          function num = numPixels(obj)

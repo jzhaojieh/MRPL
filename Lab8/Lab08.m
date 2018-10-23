@@ -7,7 +7,7 @@ clear classes;
 
 sim =       0  ;
 plot =      1  ;
-feedback =  0  ;
+feedback =  1  ;
 skip =      1  ;
 cleanFlag = 0  ;
 
@@ -21,13 +21,17 @@ RobotSystem.robot.encoders.NewMessageFcn=@encoderEventListener;
 pause(4);
 ranges = RobotSystem.robot.laser.LatestMessage.Ranges;           
 image = rangeImage(ranges,skip,cleanFlag);
-for i = 1:360
-    [th, centroidX, centroidY] = image.findLineCandidate(i, 10);
-    disp([th, centroidX, centroidY]);
-end
-% scatter(yArr, xArr, 'g');
-%obj.robot.stopLaser();
-pause(1);
+[centroidX, centroidY, th] = image.findLineCandidate();
+disp([centroidX, centroidY, th]);
+RobotSystem.executeTrajectoryToPose(centroidX-.2, centroidY, th, 1);
+ranges = RobotSystem.robot.laser.LatestMessage.Ranges;           
+image = rangeImage(ranges,skip,cleanFlag);
+[centroidX, centroidY, th] = image.findLineCandidate();
+disp([centroidX, centroidY, th]);
+RobotSystem.executeTrajectoryRelativeToPose(centroidX+.02, centroidY, th, 1);
+RobotSystem.robot.forksUp();
+pause(2);
+RobotSystem.robot.forksDown();
 
 %%%%%%%%Shutdown Robot%%%%%%%%
 

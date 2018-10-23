@@ -16,6 +16,8 @@ classdef mrplSystem < handle
             tstamp
             newenc
             tprev
+            FaceOffset
+            robFrontOffset
     end
     
     methods
@@ -38,10 +40,11 @@ classdef mrplSystem < handle
             obj.idealPoses = pose(0,0,0);
             
             obj.encoderTimeStamp = 0;
+            obj.robFrontOffset = .08;
+            obj.FaceOffset = .019;
             obj.tstamp = 0;
             obj.newenc = [0,0];
             obj.tprev = 0;
-
         end
             
         function executeTrajectoryToPose(obj, x, y, th, sgn)
@@ -129,16 +132,22 @@ classdef mrplSystem < handle
             obj.robot.stop();
         end
         
-        function acqPoseVec = acquisitionPose(objPoseVec, robFrontOffset,objFaceOffset,moreOffset)
-            totalDist = robFrontOffset + objFaceOffset + moreOffset;
-            x1 = objPoseVec.x;
-            y1 = objPoseVec.y;
-            th1 = objPoseVec.th;
-            x = x1 - totalDist * cos(th1);
-            y = y1 - totalDist * sin(th1);
-            th = 0.04 * (th1 / 0.04);
-            acqPoseVec = pose(x, y, th);
-         
+        %objPoseVec is pose of object relative to sensor
+        function robotGoal = acquisitionPose(obj, objPoseVec, moreOffset)
+             curPose = obj.idealPoses(end);
+             
+             totalDist = obj.robFrontOffset + obj.FaceOffset + moreOffset;
+             xCom = objPoseVec.x;
+             yCom = objPoseVec.y;
+             thCom = objPoseVec.th;
+             xdelt = totalDist * cos(thCom);
+             ydelt = totalDist * sin(thCom);
+             x = xCom + xdelt;
+             y = yCom + ydelt;
+             th = thCom + tan(y/x);
+             goalPose = pose(x,y,th);
+             robotGoal = goalPose.matToPoseVec(curPose.aToB() * goalPose.bToA());
+
         end
     end
 end
