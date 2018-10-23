@@ -4,6 +4,7 @@ classdef rangeImage < handle
         minUsefulRange = 0.05;
         maxRangeForTarget = 1.0;
         sailDistance = 0.127;
+        threshold = 0.01;
     end
     properties(Access = public)
         rArray = [];
@@ -28,7 +29,7 @@ classdef rangeImage < handle
                     obj.yArray(n) = ranges(i)*sin(obj.tArray(n));
                 end
                 obj.numPix = n;
-                if cleanFlag; obj.removeBadPoints(); end;
+                if cleanFlag; obj.removeBadPoints(); end
             end
         end
         function removeBadPoints(obj)
@@ -37,12 +38,12 @@ classdef rangeImage < handle
         % should not be used by any routine that expects the points
         % to be equally separated in angle. The operation is done
         % inline and removed data is deleted.
-            goodOnes = rangeImg > 0.06 & rangeImg < 4.0;
-            rangeImg = rangeImg(goodOnes);
-            indices = linspace(2,length(rangeImg),length(rangeImg))';
-            indices = indices(goodOnes);
-        % Compute the angles of surviving points
-            th = (indices-1)*(pi/180) - atan2(0.024,0.28);
+            goodOnes = obj.rArray > 0.06 & obj.rArray < 4.0;
+            obj.rArray = obj.rArray(goodOnes);
+            obj.indices = linspace(2,obj.numPix,obj.numPix);
+            obj.indices = obj.indices(goodOnes);
+            % Compute the angles of surviving points
+            obj.th = (obj.indices-1)*(pi/180) - atan2(0.024,0.28);
          end
 
          function plotRvsTh(obj, maxRange)
@@ -59,11 +60,41 @@ classdef rangeImage < handle
 
          function [err num th] = findLineCandidate(obj,middle,maxLen)
          % Find the longest sequence of pixels centered at pixel
-         % “middle” whose endpoints are separated by a length less
+         % ?middle? whose endpoints are separated by a length less
          % than the provided maximum. Return the line fit error, the
          % number of pixels participating, and the angle of
          % the line relative to the sensor.
-            %% FILL ME IN
+         expectedPts = 8;
+         pointSetX = zeros(expectedPts); pointSetY = zeros(expectedPts);
+         pointSetX(expectedPts/2) = obj.xArray(middle);
+         pointSetY(expectedPts/2) = obj.yArray(middle);
+         decrement = middle;
+         increment = middle;
+         for i = 1:(expectedPts/2 - 1)
+             obj.inc(increment);
+             obj.dec(decrement);
+             pointSetX(expectedPts/2 + i) = obj.xArray(increment);
+             pointSetY(expectedPts/2 + i) = obj.xArray(increment);
+             pointSetX(expectedPts/2 - i) = obj.xArray(decrement);
+             pointSetY(expectedPts/2 - i) = obj.xArray(decrement);
+         end
+         numPoints = length(pointSetX);
+         centroidX = mean(pointSetX);
+         centroidY = mean(pointSetY);
+         psXC = pointSetX - centroidX;
+         psYC = pointSetY - centroidY;
+         Ixx = sum(psXC.^2);
+         Iyy = sum(psYC.^2);
+         Ixy = sum(-1*(psXC.*psYC));
+         Inertia = [Ixx, Ixy;Ixy, Iyy] / numPoints;
+         lambda = eig(Inertia);
+         lambda = sqrt(lambda)*1000.0;
+            leftX = min(pointSetX);
+            rightX = max(pointSetX);
+            topY = max(pointSetY);
+            botY = min(pointSetY);
+            diag = sqrt((rightX - leftX)^2 + (botY - topY)^2);
+            th = atan2(2*Ixy,Iyy-Ixx)/2.0;
          end
 
          function num = numPixels(obj)
@@ -81,17 +112,17 @@ classdef rangeImage < handle
 
          function out = inc(obj,in)
          % increment with wraparound over natural numbers
-            out = indexAdd(obj,in,1);
+            out = obj.indexAdd(in,1);
          end
 
          function out = dec(obj,in)
          % decrement with wraparound over natural numbers
-            out = indexAdd(obj,in,-1);
+            out = obj.indexAdd(in,-1);
          end
 
          function out = indexAdd(obj,a,b)
          % add with wraparound over natural numbers. First number
-         % “a” is "natural" meaning it >=1. Second number is signed.
+         % ?a? is "natural" meaning it >=1. Second number is signed.
          % Convert a to 0:3 and add b (which is already 0:3).
          % Convert the result back by adding 1.
             out = mod((a-1)+b,obj.numPix)+1;

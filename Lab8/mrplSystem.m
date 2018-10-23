@@ -41,9 +41,16 @@ classdef mrplSystem < handle
             obj.tstamp = 0;
             obj.newenc = [0,0];
             obj.tprev = 0;
-            obj.robot.encoders.NewMessageFcn=@obj.encoderEventListener;
+
         end
             
+        function executeTrajectoryToPose(obj, x, y, th, sgn)
+            goal = pose(x, y, th);
+            currentPose = obj.idealPoses(end);
+            convertedGoal = goal.matToPoseVec(currentPose.aToB() * goal.bToA());
+            obj.executeTrajectoryRelativeToPose(convertedGoal(1), convertedGoal(2), convertedGoal(3), sgn);
+        end
+        
         function executeTrajectoryRelativeToPose(obj, x, y, th, sgn)
             obj.trajectoryObj = cubicSpiralTrajectory.planTrajectory(x, y, th, sgn);
             obj.trajectoryObj.planVelocities(0.2);
@@ -122,14 +129,6 @@ classdef mrplSystem < handle
             obj.robot.stop();
         end
         
-        function encoderEventListener(obj, handle, event)
-            if obj.tstamp == 0
-                obj.tstamp = double(event.Header.Stamp.Sec) + double(event.Header.Stamp.Nsec)/1e9;
-            end
-            obj.encoderTimeStamp = double(event.Header.Stamp.Sec) + double(event.Header.Stamp.Nsec)/1e9;
-            e = [obj.robot.encoders.LatestMessage.Vector.X, obj.robot.encoders.LatestMessage.Vector.Y];
-            obj.newenc = e;
-        end
         function acqPoseVec = acquisitionPose(objPoseVec, robFrontOffset,objFaceOffset,moreOffset)
             totalDist = robFrontOffset + objFaceOffset + moreOffset;
             x1 = objPoseVec.x;
