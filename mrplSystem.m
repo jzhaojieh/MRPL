@@ -138,5 +138,25 @@ classdef mrplSystem < handle
             e = [obj.robot.encoders.LatestMessage.Vector.X, obj.robot.encoders.LatestMessage.Vector.Y];
             obj.newenc = e;
         end
+        %objPoseVec is pose of object relative to sensor
+        function acqPoseVec = acquisitionPose(objPoseVec, robFrontOffset, objFaceOffset, moreOffset)
+             curPose = obj.idealPoses(end);
+             
+             totalDist = robFrontOffset + objFaceOffset + moreOffset;
+             xCom = objPoseVec.x;
+             yCom = objPoseVec.y;
+             thCom = objPoseVec.th;
+             xdelt = totalDist * cos(thCom);
+             ydelt = totalDist * sin(thCom);
+             x = xCom + xdelt;
+             y = yCom + ydelt;
+             th = thCom + tan(y/x);
+             goalPose = pose(x,y,th);
+             robotGoal = curPose.matToPoseVec(goalPose.aToB() * curPose.bToA());
+             
+             %goal = pose(x, y, th);
+             %currentPose = obj.idealPoses(end);
+             %convertedGoal = goal.matToPoseVec(currentPose.aToB() * goal.bToA());
+             %obj.executeTrajectoryRelativeToPose(convertedGoal(1), convertedGoal(2), convertedGoal(3), sgn);
     end
 end
