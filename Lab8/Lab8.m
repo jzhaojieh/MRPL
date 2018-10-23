@@ -2,26 +2,29 @@ robot = raspbot('Raspbot-07');
 
 robot.startLaser();
 pause(4);
-ranges = robot.laser.LatestMessage.Ranges;           
+ranges = robot.laser.LatestMessage.Ranges; 
+goodOnes = ranges > 0.06 & ranges < 4.0;
+rangeImg = ranges(goodOnes);
+indices = linspace(1,length(goodOnes),length(goodOnes));
+indices = indices(goodOnes);
+th = (indices-1)*(pi/180) - atan2(0.024,0.28);
 xArr = []; yArr = [];
 % remove all points with bad range
-for i = 1:length(ranges) 
-   [x1, y1, th1] = irToXy(i, ranges(i));
+for i = 1:length(rangeImg) 
+   [x1, y1, th1] = irToXy(i, rangeImg(i));
    xArr = [xArr x1]; yArr = [yArr y1];
 end
-findLineCandidate(ranges, xArr, yArr);
+findLineCandidate(rangeImg, xArr, yArr);
 % scatter(yArr, xArr, 'g');
-%obj.robot.stopLaser();
 robot.stopLaser();
+robot.shutdown();
 pause(1);
 function findLineCandidate(rangeImg, xArr, yArr)
-    goodOnes = rangeImg > 0.06 & rangeImg < 4.0;
-    rangeImg = rangeImg(goodOnes);
-    indices = linspace(2,length(rangeImg),length(rangeImg));
-    indices = indices(goodOnes);
+    maxDist = 4.0;
     % Compute the angles of surviving points
-    th = (indices-1)*(pi/180) - atan2(0.024,0.28);
+    
     for i = 1:length(rangeImg)
+        
         pointSetX = []; pointSetY = [];
         x = xArr(i); y = yArr(i);
         for j = 1:length(rangeImg)
@@ -45,6 +48,7 @@ function findLineCandidate(rangeImg, xArr, yArr)
         Inertia = [Ixx Ixy;Ixy Iyy] / numPoints;
         lambda = eig(Inertia);
         lambda = sqrt(lambda)*1000.0;
+        fprintf("num points = %d \n", numPoints);
         if ((numPoints >= 7) && (lambda(1) < 1.3) && dist < maxDist)
             leftX = min(pointSetX);
             rightX = max(pointSetX);
