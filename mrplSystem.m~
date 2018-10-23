@@ -12,6 +12,10 @@ classdef mrplSystem < handle
             corXArr
             corYArr
             idealPoses
+            encoderTimeStamp
+            tstamp
+            newenc
+            tprev
     end
     
     methods
@@ -33,8 +37,19 @@ classdef mrplSystem < handle
             obj.corYArr = [];
             obj.idealPoses = pose(0,0,0);
             
+            obj.encoderTimeStamp = 0;
+            obj.tstamp = 0;
+            obj.newenc = [0,0];
+            obj.tprev = 0;
         end
             
+        function executeTrajectoryToPose(obj, x, y, th, sgn)
+            goal = pose(x, y, th);
+            currentPose = obj.idealPoses(end);
+            convertedGoal = goal.matToPoseVec(currentPose.aToB() * goal.bToA());
+            obj.executeTrajectoryRelativeToPose(convertedGoal(1), convertedGoal(2), convertedGoal(3), sgn);
+        end
+        
         function executeTrajectoryRelativeToPose(obj, x, y, th, sgn)
             obj.trajectoryObj = cubicSpiralTrajectory.planTrajectory(x, y, th, sgn);
             obj.trajectoryObj.planVelocities(0.2);
@@ -46,18 +61,26 @@ classdef mrplSystem < handle
             obj.trajFollower = trajectoryFollower(obj.rob, obj.trajectoryObj);
             
             prevIdealPose = obj.idealPoses(end);
-            disp([prevIdealPose.x, prevIdealPose.y, prevIdealPose.th])
             
-            start = tic;
-            t = toc(start);
+            obj.tstamp = obj.encoderTimeStamp;
+            t = 0;
             timeFinal = 100;
+            
+            vl = 0;
+            vr = 0;
             
             while(t < timeFinal)
                 
-                lRead = obj.robot.encoders.LatestMessage.Vector.X;
-                rRead = obj.robot.encoders.LatestMessage.Vector.Y;
+                lRead = obj.newenc(1);
+                rRead = obj.newenc(2);
                 
-                t = toc(start);
+                t = obj.encoderTimeStamp - obj.tstamp;
+                
+                if t == obj.tprev
+                    obj.robot.sendVelocity(vl, vr);
+                    pause(.005)
+                    continue
+                end
                 
                 corRelPose = obj.trajectoryObj.getPoseAtTime(t);
                 worldPose = pose(0,0,prevIdealPose.th);
@@ -87,20 +110,23 @@ classdef mrplSystem < handle
                     title("Correct Pose of Trajectory in meters");
                     xlabel("X distance (m)");
                     ylabel("Y distance (m)");
-                
+                    
                     subplot(1,2,2);
-                    plot(obj.pid.actualXs, obj.pid.actualYs);
+                    [actualXs, actualYs] = obj.pid.actualXY(obj.pid);
+                    plot(actualXs, actualYs);
                     title("Current Pose of Trajectory in meters");
                     xlabel("X distance (m)");
                     ylabel("Y distance (m)");
                 
                 end
                 
-                pause(.01);
+                obj.tprev = t;
+                pause(.005);
                 timeFinal = obj.trajectoryObj.getTrajectoryDuration();
             end
+            obj.tstamp = 0;
             obj.robot.stop();
         end
-    end
         
+    end
 end

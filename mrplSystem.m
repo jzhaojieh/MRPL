@@ -41,9 +41,17 @@ classdef mrplSystem < handle
             obj.tstamp = 0;
             obj.newenc = [0,0];
             obj.tprev = 0;
-            obj.robot.encoders.NewMessageFcn=@obj.encoderEventListener;
+            
+            %obj.robot.encoders.NewMessageFcn=@obj.encoderEventListener;
         end
             
+        function executeTrajectoryToPose(obj, x, y, th, sgn)
+            goal = pose(x, y, th);
+            currentPose = obj.idealPoses(end);
+            convertedGoal = goal.matToPoseVec(currentPose.aToB() * goal.bToA());
+            obj.executeTrajectoryRelativeToPose(convertedGoal(1), convertedGoal(2), convertedGoal(3), sgn);
+        end
+        
         function executeTrajectoryRelativeToPose(obj, x, y, th, sgn)
             obj.trajectoryObj = cubicSpiralTrajectory.planTrajectory(x, y, th, sgn);
             obj.trajectoryObj.planVelocities(0.2);
