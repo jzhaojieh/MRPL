@@ -5,7 +5,7 @@ classdef rangeImage < handle
         maxRangeForTarget = 1.0;
         sailDistance = 0.127;
         threshold = 0.01;
-        maxDist = 0.5;
+        maxDist = 1;
         Iyythreshold = 5;
         fitErrorThreshhold = .005;
     end
@@ -17,11 +17,13 @@ classdef rangeImage < handle
         numPix;
         indices = [];
         th = [];
+        robotModel;
     end
     methods(Access = public)
         function obj = rangeImage(ranges,skip,cleanFlag)
             % Constructs a rangeImage for the supplied data.
             % Converts the data to rectangular coordinates
+            obj.robotModel = robotModel();
             n = 0;
             if(nargin == 3)
                 for i=1:skip:length(ranges)
@@ -141,27 +143,33 @@ classdef rangeImage < handle
          end
          end
          
-         function [centerX, centerY, centerTh] = getPalletLoc(obj, leftIndex, rightIndex)
+         function [centerX, centerY, centerTh] = getPalletLoc(obj, RobotSystem, leftIndex, rightIndex)
              %go from leftIndex to rightIndex and see if any of the points
              %correspond to a pallet
              midpoint = leftIndex;
-             centerX = 0;
-             centerY = 0;
-             centerTh = 0;
+             X = 0;
+             Y = 0;
+             Th = 0;
              palletPoints = 0;
+             palletDist = 10;
              while midpoint ~= rightIndex
                  [isSail, testTh, numPoints] = obj.findLineCandidate(midpoint);
-                 if(isSail && numPoints > palletPoints && (obj.rArray(midpoint) > .054 || obj.rArray(midpoint) < .052))
+                 if(isSail && numPoints > palletPoints && obj.rArray(midpoint) <= palletDist + obj.threshold && (obj.rArray(midpoint) > .054 || obj.rArray(midpoint) < .052))
                      palletPoints = numPoints;
-                     centerX = obj.xArray(midpoint);
-                     centerY = obj.yArray(midpoint);
-                     centerTh = testTh;
-                     if centerX < .05
-                         centerTh = 0;
+                     X = obj.xArray(midpoint);
+                     Y = obj.yArray(midpoint);
+                     Th = testTh;
+                     palletDist = obj.rArray(midpoint);
+                     if X < .05
+                         Th = 0;
                      end
                  end
                  midpoint = obj.inc(midpoint);
              end
+             globalPose = pose.matToPoseVec(RobotSystem.pid.actualPoses(end).bToA() * pose(X, Y, Th).bToA());
+             centerX = globalPose(1);
+             centerY = globalPose(2);
+             centerTh = globalPose(3);
          end
 
          function num = numPixels(obj)

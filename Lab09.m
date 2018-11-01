@@ -19,22 +19,36 @@ RobotSystem.robot.startLaser();
 RobotSystem.robot.encoders.NewMessageFcn=@encoderEventListener;
 RobotSystem.robot.forksDown();
 
-%%%%%%%%%Laser Stuff%%%%%%%%%
-
 pause(4);
-ranges = RobotSystem.robot.laser.LatestMessage.Ranges;           
-image = rangeImage(ranges,skip,cleanFlag);
-[centroidX, centroidY, th] = image.getPalletLoc(leftIndex, rightIndex);
-disp([centroidX, centroidY, th]);
-%RobotSystem.executeTrajectoryToPose(centroidX-.2, centroidY, th, 1);
-%ranges = RobotSystem.robot.laser.LatestMessage.Ranges;           
-%image = rangeImage(ranges,skip,cleanFlag);
-%[centroidX, centroidY, th] = image.getPalletLoc(leftIndex, rightIndex);
-%disp([centroidX, centroidY, th]);
-%RobotSystem.executeTrajectoryRelativeToPose(centroidX-.03, centroidY, th, 1);
-%RobotSystem.robot.forksUp();
-%pause(2);
-%RobotSystem.robot.forksDown();
+
+%%%%%%%%%Laser Stuff%%%%%%%%%
+for i = 1:3
+    ranges = RobotSystem.robot.laser.LatestMessage.Ranges;           
+    image = rangeImage(ranges,skip,cleanFlag);
+    
+    [centroidX, centroidY, th] = image.getPalletLoc(RobotSystem, leftIndex, rightIndex);
+    disp([centroidX, centroidY, th]);
+    RobotSystem.executeTrajectoryToPose(centroidX-.2, centroidY, th, 1);
+    
+    ranges = RobotSystem.robot.laser.LatestMessage.Ranges;           
+    image = rangeImage(ranges,skip,cleanFlag);
+    
+    [centroidX, centroidY, th] = image.getPalletLoc(RobotSystem, leftIndex, rightIndex);
+    disp([centroidX, centroidY, th]);
+    RobotSystem.executeTrajectoryToPose(centroidX-.03, centroidY, th, 1);
+    
+    RobotSystem.robot.forksUp();
+    pause(1);
+    
+    RobotSystem.robot.forksDown();
+    pause(1);
+    
+    RobotSystem.moveRelDist(-.1);
+    RobotSystem.turnRelAngle(180);
+    
+    pause(9);
+    pause(1);
+end
 
 %%%%%%%%Shutdown Robot%%%%%%%%
 

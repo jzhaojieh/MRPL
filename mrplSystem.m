@@ -18,6 +18,8 @@ classdef mrplSystem < handle
             tprev
             FaceOffset
             robFrontOffset
+            vMax
+            aMax
     end
     
     methods
@@ -38,6 +40,9 @@ classdef mrplSystem < handle
             obj.corXArr = [];
             obj.corYArr = [];
             obj.idealPoses = pose(0,0,0);
+            
+            obj.vMax = .2;
+            obj.aMax = .75;
             
             obj.encoderTimeStamp = 0;
             obj.robFrontOffset = .08;
@@ -149,89 +154,93 @@ classdef mrplSystem < handle
              robotGoal = goalPose.matToPoseVec(curPose.aToB() * goalPose.bToA());
 
         end
-        
-        %=================From Lab 4=================================        
-        function [uref, tf] = trapezoidalVelocityProfile( t , amax, vmax, dist, sgn)
-        % Returns the velocity command of a trapezoidal profile of maximum
-        % acceleration amax and maximum velocity vmax whose ramps are of
-        % duration tf. Sgn is the sign of the desired velocities.
-        % Returns 0 if t is negative. 
-            tramp = vmax / amax;
-            sf = dist;
-            tf = (sf + vmax^2/amax)/vmax;
-
-            if t < 0 || t >= tf
-                uref = 0;
-            elseif t < tramp
-                uref = amax * t;
-            elseif (tf - t) < tramp
-                uref = amax * (tf - t);
-            elseif tramp < t && t < (tf - tramp)
-                uref = vmax;
-            else
-                uref = 0;
-            end
-            uref = uref * sgn;
-        end
- 
-        function [rW, lW, tf] = trapezoidalAngVelocityProfile( t , amax, vmax, th)
-        % Returns the velocity command of a trapezoidal profile of maximum
-        % acceleration amax and maximum velocity vmax whose ramps are of
-        % duration tf. Sgn is the sign of the desired velocities.
-        % Returns 0 if t is negative. 
-            tramp = vmax / amax;
-            sf = mod (th, 360);
-            if sf > 180
-                sf = 180-sf;
-            end
-            sgn = 1
-            if sf < 0 
-                sgn = -1
-            end
-            tf = (sf + vmax^2/amax)/vmax;
-
-            if t < 0 || t >= tf
-                uref = 0;
-            elseif t < tramp
-                uref = amax * t;
-            elseif (tf - t) < tramp
-                uref = amax * (tf - t);
-            elseif tramp < t && t < (tf - tramp)
-                uref = vmax;
-            else
-                uref = 0;
-            end
-            rW = uref * sgn;
-            lW = uref;
-        end
       
 %=====================================================
                
-        function moveRelDist(obj, dist, doControlPlotting)
+        function moveRelDist(obj, dist)
             %move forward or backward a specified distance and stop
             sgn = 1;
             if dist < 0
-                sgn = 1;
+                sgn = -1;
             end
             %make sure the velocity is such that the distance will take at
-            %least a second    
-            [vel, tf] = trapezoidalVelocityProfile(obj.tstamp, obj.aMax, obj.vMax, dist, sgn);
-            if tf >= 1
-            %move distance forward or backward
-                obj.robot.sendVelocity(vel, vel);
-            else
-                disp("moveRelDist had insufficient velocity, takes less than a second");
+            %least a second  
+            timeStart = tic();
+            t = toc(timeStart);
+            tf = 1;
+            while t < tf
+                t = toc(timeStart);
+                lRead = obj.newenc(1);
+                rRead = obj.newenc(2);
+                encTime = obj.encoderTimeStamp - obj.tstamp;
+                [vlFB, vrFB] = obj.pid.giveError(obj.pid, lRead, rRead, encTime, obj.idealPoses(end));
+                
+                tramp = obj.vMax / obj.aMax;
+                sf = dist;
+                tf = (abs(sf) + obj.vMax^2/obj.aMax)/obj.vMax;
+
+                if t < 0 || t >= tf
+                    uref = 0;
+                elseif t < tramp
+                    uref = obj.aMax * t;
+                elseif (tf - t) < tramp
+                    uref = obj.aMax * (tf - t);
+                elseif tramp < t && t < (tf - tramp)
+                    uref = obj.vMax;
+                else
+                    uref = 0;
+                end
+                uref = uref * sgn;
+                obj.robot.sendVelocity(uref, uref);
+                pause(.05);
             end
+            obj.robot.stop();
         end
 
-        function turnRelAngle(obj, angle, doControlPlotting)
+        function turnRelAngle(obj, angle)
             % make sure the velocity is such that the distance will take at
             % least a second
-            [rw, lw, tf] = trapezoidalAngVelocityProfile(obj.tstamp, obj.aMax, objvMax, angle);
-            if tf >= 1
-                obj.robot.sendVelocity(rw, lw);
-            else
-                disp("turnRelAngle had insufficient velocity, takes less than a second");
+            %make sure the velocity is such that the distance will take at
+            %least a second  
+            timeStart = tic();
+            t = toc(timeStart);
+            tf = 1;
+            while t < tf
+                t = toc(timeStart);
+                lRead = obj.newenc(1);
+                rRead = obj.newenc(2);
+                encTime = obj.encoderTimeStamp - obj.tstamp;
+                [vlFB, vrFB] = obj.pid.giveError(obj.pid, lRead, rRead, encTime, obj.idealPoses(end));
+                
+                tramp = obj.vMax / obj.aMax;
+                finalAngle = mod (angle, 360);
+                if finalAngle > 180
+                    finalAngle = 180-finalAngle;
+                end
+                sgn = 1;
+                if finalAngle < 0 
+                    sgn = -1;
+                end
+                sf = finalAngle * (pi/180) * obj.rob.W2;
+                tf = (sf + obj.vMax^2/obj.aMax)/obj.vMax;
+
+                if t < 0 || t >= tf
+                    uref = 0;
+                elseif t < tramp
+                    uref = obj.aMax * t;
+                elseif (tf - t) < tramp
+                    uref = obj.aMax * (tf - t);
+                elseif tramp < t && t < (tf - tramp)
+                    uref = obj.vMax;
+                else
+                    uref = 0;
+                end
+                rW = uref * sgn;
+                lW = uref * -1 * sgn;
+                obj.robot.sendVelocity(rW, lW);
+                pause(.05);
             end
+            obj.robot.stop();
+        end
     end
 end
