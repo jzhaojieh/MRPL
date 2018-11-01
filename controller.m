@@ -25,8 +25,8 @@ classdef controller < handle
             obj.thArr = [];
             obj.timeArr = [];
             obj.actualPoses = [];
-            obj.actualXs = [];
-            obj.actualYs = [];
+            obj.actualXs = [obj.actualXs, 0];
+            obj.actualYs = [obj.actualYs, 0];
             obj.linError = [];
             obj.angError = [];
             obj.lEnc = [obj.lEnc, lRead];
@@ -41,43 +41,47 @@ classdef controller < handle
         
         function [uv, uw] = giveError(obj, lRead, rRead, tcur, correctPos)
             %curPose is where robot is now, derived from lRead, rRead
-            pPose = obj.actualPoses(end); %previous pose 
             plEnc = obj.lEnc(end); %previous lEnc
             prEnc = obj.rEnc(end); %previous rEnc
             tprev = obj.timeArr(end);
             
-            vl = (lRead - plEnc) / (tcur - tprev);
-            vr = (rRead - prEnc) / (tcur - tprev);
+            dt = tcur - tprev;
+            
+            vl = (lRead - plEnc) / (dt);
+            vr = (rRead - prEnc) / (dt);
             [V, w] = obj.rob.vlvrToVw(vl, vr);
             
-            prevX = pPose.x;
-            prevY = pPose.y;
-            prevTh = pPose.th;
+            prevX = obj.actualXs(end);
+            prevY = obj.actualYs(end);
+            prevTh = obj.thArr(end);
             
-            dTheta = w*(tcur - tprev);
+            dTheta = w*(dt);
             curTh = prevTh + dTheta;
-            displacement = V*(tcur - tprev);
-            dx = displacement*cos(curTh);
-            dy = displacement*sin(curTh);
+            displacement = V*(dt);
+            dx = displacement*cos(curTh-(dTheta/2));
+            dy = displacement*sin(curTh-(dTheta/2));
             
             curPose = pose(prevX + dx, prevY + dy, curTh);
             
             errorX = correctPos.x - curPose.x;
             errorY = correctPos.y - curPose.y;
             errorTh = atan2(sin(correctPos.th-curPose.th), cos(correctPos.th-curPose.th));
+            
+            errorConverted = curPose.bToARot() * [errorX; errorY];
 
             %----Tau stuff--------
             tau = 40;
             kx = 1/tau;
-            ky = 2/(tau^2*abs(V));
+            if V < .001
+                ky = 0;
+            else
+                ky = 2/(tau^2*abs(V));
+            end
             kth = 1/tau;
             %---------------------
             
-            if V < .001
-                ky = 0;
-            end
-            uv = kx*errorX;
-            uw = ky*errorY + kth*errorTh;
+            uv = kx*errorConverted(1);
+            uw = ky*errorConverted(2) + kth*errorTh;
             
             obj.lEnc = [obj.lEnc, lRead];
             obj.rEnc = [obj.rEnc, rRead];
