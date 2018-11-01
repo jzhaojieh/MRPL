@@ -125,6 +125,7 @@ classdef rangeImage < handle
                     [p, S] = polyfit(pointSetX, pointSetY, 1);
                     [y_fit, delta] = polyval(p, pointSetY, S);
                     fitError = mean(delta)/sailDist;
+                    fitError = .1;
                     if ((numPoints >= 7) && (lambda(1) < 1.3) && (sailDist < obj.maxDist) && (sailDist ~= .053) && (sailLength < obj.sailDistance+obj.threshold) && (fitError > obj.fitErrorThreshhold))
                         isSail = true;
                         th = atan2(2*Ixy,Iyy-Ixx)/2.0;
@@ -166,10 +167,20 @@ classdef rangeImage < handle
                  end
                  midpoint = obj.inc(midpoint);
              end
-             globalPose = pose.matToPoseVec(RobotSystem.pid.actualPoses(end).bToA() * pose(X, Y, Th).bToA());
-             centerX = globalPose(1);
-             centerY = globalPose(2);
-             centerTh = globalPose(3);
+             robotPose = RobotSystem.pid.actualPoses(end);
+             
+             %globalPose = pose.matToPoseVec(pose(X, Y, Th).bToA() * robotPose.bToA() * pose(0,0,0).aToB());
+             %centerX = globalPose(1);
+             %centerY = globalPose(2);
+             %centerTh = globalPose(3);
+             
+             centerX = (robotPose.x + X * cos(robotPose.th));
+             centerY = -1 * (robotPose.y + Y * sin(robotPose.th));
+             centerTh = (robotPose.th + Th);
+             centerTh = mod (centerTh, 2*pi);
+             if centerTh > pi
+                 centerTh = 2*pi-centerTh;
+             end
          end
 
          function num = numPixels(obj)

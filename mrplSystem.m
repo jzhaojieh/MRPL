@@ -26,6 +26,23 @@ classdef mrplSystem < handle
         function obj = mrplSystem(sim, enablePlot, enableFeedback)
             if(sim)
                 obj.robot = raspbot('sim');
+                
+                ob1 = lineObject;
+                ob1.lines = [0 -.0635; 0 0.0635];
+                ob1.color = [1 0 0];
+                ob1.pose = [.5 0 0];
+                
+                ob2 = lineObject;
+                ob2.lines = [0 -.0635; 0 0.0635];
+                ob2.color = [1 0 0];
+                ob2.pose = [-.5 0 0];
+                
+                ob3 = lineObject;
+                ob3.lines = [-1, -1; -1, 1; 1, 1; 1, -1; -1, -1];
+                ob3.color = [1 0 0];
+                ob3.pose = [0 0 0];
+                
+                obj.robot.genMap([ob1, ob2, ob3]);
             else
                 obj.robot = raspbot('not sim');
             end
@@ -55,18 +72,18 @@ classdef mrplSystem < handle
         function executeTrajectoryToPose(obj, x, y, th, sgn)
             goal = pose(x, y, th);
             currentPose = obj.idealPoses(end);
-            convertedGoal = goal.matToPoseVec(currentPose.aToB() * goal.bToA());
+            convertedGoal = pose.matToPoseVec(currentPose.aToB() * goal.bToA());
             obj.executeTrajectoryRelativeToPose(convertedGoal(1), convertedGoal(2), convertedGoal(3), sgn);
         end
         
         function executeTrajectoryRelativeToPose(obj, x, y, th, sgn)
             obj.trajectoryObj = cubicSpiralTrajectory.planTrajectory(x, y, th, sgn);
             obj.trajectoryObj.planVelocities(0.2);
-            obj.executeTrajectory();
+            obj.executeTrajectory(sgn);
         end
         
 
-        function executeTrajectory(obj)
+        function executeTrajectory(obj, sgn)
             obj.trajFollower = trajectoryFollower(obj.rob, obj.trajectoryObj);
             
             prevIdealPose = obj.idealPoses(end);
@@ -104,7 +121,7 @@ classdef mrplSystem < handle
                 
                 vl = obj.enableFeedback*vlFB + vlFF;
                 vr = obj.enableFeedback*vrFB + vrFF;
-                obj.robot.sendVelocity(vl, vr);
+                obj.robot.sendVelocity(vl*sgn, vr*sgn);
                 
                 corX = obj.idealPoses(end).x;
                 corY = obj.idealPoses(end).y;
@@ -167,17 +184,20 @@ classdef mrplSystem < handle
             %least a second  
             timeStart = tic();
             t = toc(timeStart);
-            tf = 1;
-            while t < tf
+            tramp = obj.vMax / obj.aMax;
+            sf = dist;
+            tf = (abs(sf) + obj.vMax^2/obj.aMax)/obj.vMax;
+            obj.tstamp = obj.encoderTimeStamp;
+            
+            prevIdealPose = obj.idealPoses(end);
+            obj.idealPoses = [obj.idealPoses, pose(prevIdealPose.x+dist, prevIdealPose.y, prevIdealPose.th)];
+            
+            while t < tf+1
                 t = toc(timeStart);
                 lRead = obj.newenc(1);
                 rRead = obj.newenc(2);
                 encTime = obj.encoderTimeStamp - obj.tstamp;
-                [vlFB, vrFB] = obj.pid.giveError(obj.pid, lRead, rRead, encTime, obj.idealPoses(end));
-                
-                tramp = obj.vMax / obj.aMax;
-                sf = dist;
-                tf = (abs(sf) + obj.vMax^2/obj.aMax)/obj.vMax;
+                [~, ~] = obj.pid.giveError(obj.pid, lRead, rRead, encTime, obj.idealPoses(end));
 
                 if t < 0 || t >= tf
                     uref = 0;
@@ -204,25 +224,28 @@ classdef mrplSystem < handle
             %least a second  
             timeStart = tic();
             t = toc(timeStart);
-            tf = 1;
-            while t < tf
+            tramp = obj.vMax / obj.aMax;
+            finalAngle = mod (angle, 360);
+            if finalAngle > 180
+                finalAngle = 180-finalAngle;
+            end
+            sgn = 1;
+            if finalAngle < 0 
+                sgn = -1;
+            end
+            sf = finalAngle * (pi/180) * obj.rob.W2;
+            tf = (sf + obj.vMax^2/obj.aMax)/obj.vMax;
+            obj.tstamp = obj.encoderTimeStamp;
+            
+            prevIdealPose = obj.idealPoses(end);
+            obj.idealPoses = [obj.idealPoses, pose(prevIdealPose.x, prevIdealPose.y, finalAngle * (pi/180))];
+            
+            while t < tf+1
                 t = toc(timeStart);
                 lRead = obj.newenc(1);
                 rRead = obj.newenc(2);
                 encTime = obj.encoderTimeStamp - obj.tstamp;
-                [vlFB, vrFB] = obj.pid.giveError(obj.pid, lRead, rRead, encTime, obj.idealPoses(end));
-                
-                tramp = obj.vMax / obj.aMax;
-                finalAngle = mod (angle, 360);
-                if finalAngle > 180
-                    finalAngle = 180-finalAngle;
-                end
-                sgn = 1;
-                if finalAngle < 0 
-                    sgn = -1;
-                end
-                sf = finalAngle * (pi/180) * obj.rob.W2;
-                tf = (sf + obj.vMax^2/obj.aMax)/obj.vMax;
+                [~, ~] = obj.pid.giveError(obj.pid, lRead, rRead, encTime, obj.idealPoses(end));
 
                 if t < 0 || t >= tf
                     uref = 0;

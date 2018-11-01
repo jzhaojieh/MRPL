@@ -5,7 +5,7 @@ clear classes;
 
 %%%%%%%Setup mrplSystem%%%%%%%
 
-sim =        0    ;
+sim =        1    ;
 plot =       0    ;
 feedback =   1    ;
 cleanFlag =  0    ;
@@ -28,14 +28,14 @@ for i = 1:3
     
     [centroidX, centroidY, th] = image.getPalletLoc(RobotSystem, leftIndex, rightIndex);
     disp([centroidX, centroidY, th]);
-    RobotSystem.executeTrajectoryToPose(centroidX-.2, centroidY, th, 1);
+    RobotSystem.executeTrajectoryToPose(centroidX + sign(centroidX) * (-.2), centroidY, th, 1);
     
     ranges = RobotSystem.robot.laser.LatestMessage.Ranges;           
     image = rangeImage(ranges,skip,cleanFlag);
     
     [centroidX, centroidY, th] = image.getPalletLoc(RobotSystem, leftIndex, rightIndex);
     disp([centroidX, centroidY, th]);
-    RobotSystem.executeTrajectoryToPose(centroidX-.03, centroidY, th, 1);
+    RobotSystem.executeTrajectoryToPose(centroidX + sign(centroidX) * (-.03), centroidY, th, 1);
     
     RobotSystem.robot.forksUp();
     pause(1);
@@ -46,8 +46,10 @@ for i = 1:3
     RobotSystem.moveRelDist(-.1);
     RobotSystem.turnRelAngle(180);
     
-    pause(9);
     pause(1);
+    if sim == 0
+        pause(9);
+    end
 end
 
 %%%%%%%%Shutdown Robot%%%%%%%%

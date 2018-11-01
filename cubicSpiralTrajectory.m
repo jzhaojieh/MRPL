@@ -179,7 +179,7 @@ classdef cubicSpiralTrajectory < handle
             q = atan2(y,x);
             % set pi(0 equal to - pi() to avoid out of bounds in scalar
             % field.
-            if(abs(q-pi()) < 1e-10) ; q = -pi(); end;
+            if(abs(q-pi()) < 1e-10) ; q = -pi(); end
             t = th;
             a1 = a1T.get(q,t);
             a2 = a2T.get(q,t);
