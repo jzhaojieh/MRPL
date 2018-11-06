@@ -27,14 +27,12 @@ for i = 1:3
     image = rangeImage(ranges,skip,cleanFlag);
     
     [centroidX, centroidY, th] = image.getPalletLoc(RobotSystem, leftIndex, rightIndex);
-    disp([centroidX, centroidY, th]);
     RobotSystem.executeTrajectoryToPose(centroidX + sign(centroidX) * (-.2), centroidY, th, 1);
     
     ranges = RobotSystem.robot.laser.LatestMessage.Ranges;           
     image = rangeImage(ranges,skip,cleanFlag);
     
     [centroidX, centroidY, th] = image.getPalletLoc(RobotSystem, leftIndex, rightIndex);
-    disp([centroidX, centroidY, th]);
     RobotSystem.executeTrajectoryToPose(centroidX + sign(centroidX) * (-.03), centroidY, th, 1);
     
     RobotSystem.robot.forksUp();

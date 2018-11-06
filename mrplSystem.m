@@ -113,8 +113,12 @@ classdef mrplSystem < handle
                 
                 %%%%%Convert relative coords to world coords%%%%%
                 corPose = worldPose.bToA * [corRelPose(1); corRelPose(2); corRelPose(3)];
-
-                obj.idealPoses = [obj.idealPoses, pose(corPose(1) + prevIdealPose.x, corPose(2) + prevIdealPose.y, corPose(3) + prevIdealPose.th)];
+                idealTh = (corPose(3) + prevIdealPose.th);
+                if abs(idealTh) > pi
+                    signTh = sign(idealTh);
+                    idealTh = signTh*2*pi - idealTh;
+                end
+                obj.idealPoses = [obj.idealPoses, pose(corPose(1) + prevIdealPose.x, corPose(2) + prevIdealPose.y, idealTh)];
                 
                 [vlFF, vrFF] = obj.trajFollower.feedForwardVel(obj.trajFollower, t);
                 [vlFB, vrFB] = obj.pid.giveError(obj.pid, lRead, rRead, t, obj.idealPoses(end));
@@ -190,7 +194,7 @@ classdef mrplSystem < handle
             obj.tstamp = obj.encoderTimeStamp;
             
             prevIdealPose = obj.idealPoses(end);
-            obj.idealPoses = [obj.idealPoses, pose(prevIdealPose.x+dist, prevIdealPose.y, prevIdealPose.th)];
+            obj.idealPoses = [obj.idealPoses, pose(prevIdealPose.x+dist*cos(prevIdealPose.th), prevIdealPose.y+dist*sin(prevIdealPose.th), prevIdealPose.th)];
             
             while t < tf+1
                 t = toc(timeStart);
@@ -212,7 +216,7 @@ classdef mrplSystem < handle
                 end
                 uref = uref * sgn;
                 obj.robot.sendVelocity(uref, uref);
-                pause(.05);
+                pause(.005);
             end
             obj.robot.stop();
         end
@@ -238,7 +242,14 @@ classdef mrplSystem < handle
             obj.tstamp = obj.encoderTimeStamp;
             
             prevIdealPose = obj.idealPoses(end);
-            obj.idealPoses = [obj.idealPoses, pose(prevIdealPose.x, prevIdealPose.y, finalAngle * (pi/180))];
+            
+            idealAngle = prevIdealPose.th + finalAngle*(pi/180);
+            idealAngle = mod(idealAngle, 2*pi);
+            if idealAngle > pi
+                idealAngle = idealAngle-2*pi;
+            end
+            
+            obj.idealPoses = [obj.idealPoses, pose(prevIdealPose.x, prevIdealPose.y, idealAngle)];
             
             while t < tf+1
                 t = toc(timeStart);
@@ -247,7 +258,7 @@ classdef mrplSystem < handle
                 encTime = obj.encoderTimeStamp - obj.tstamp;
                 [~, ~] = obj.pid.giveError(obj.pid, lRead, rRead, encTime, obj.idealPoses(end));
 
-                if t < 0 || t >= tf
+                if t < 0 || t > tf
                     uref = 0;
                 elseif t < tramp
                     uref = obj.aMax * t;
@@ -261,7 +272,7 @@ classdef mrplSystem < handle
                 rW = uref * sgn;
                 lW = uref * -1 * sgn;
                 obj.robot.sendVelocity(rW, lW);
-                pause(.05);
+                pause(.005);
             end
             obj.robot.stop();
         end

@@ -167,20 +167,17 @@ classdef rangeImage < handle
                  end
                  midpoint = obj.inc(midpoint);
              end
+             
              robotPose = RobotSystem.pid.actualPoses(end);
              
-             %globalPose = pose.matToPoseVec(pose(X, Y, Th).bToA() * robotPose.bToA() * pose(0,0,0).aToB());
-             %centerX = globalPose(1);
-             %centerY = globalPose(2);
-             %centerTh = globalPose(3);
-             
-             centerX = (robotPose.x + X * cos(robotPose.th));
-             centerY = -1 * (robotPose.y + Y * sin(robotPose.th));
              centerTh = (robotPose.th + Th);
-             centerTh = mod (centerTh, 2*pi);
-             if centerTh > pi
-                 centerTh = 2*pi-centerTh;
+             if abs(centerTh) > pi
+                 centerTh = sign(centerTh)*(2*pi-abs(centerTh));
              end
+             centerX = (robotPose.x + sqrt(X^2 + Y^2) * cos(atan2(Y, X)+robotPose.th));
+             centerY = (robotPose.y + sqrt(X^2 + Y^2) * sin(atan2(Y, X)+robotPose.th));
+             
+             disp([X, Y, Th, 0, robotPose.x, robotPose.y, robotPose.th, 0, centerX, centerY, centerTh]);
          end
 
          function num = numPixels(obj)

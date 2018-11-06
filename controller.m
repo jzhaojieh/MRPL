@@ -47,6 +47,12 @@ classdef controller < handle
             
             dt = tcur - tprev;
             
+            if dt == 0
+                uv = 0;
+                uw = 0;
+                return
+            end
+            
             vl = (lRead - plEnc) / (dt);
             vr = (rRead - prEnc) / (dt);
             [V, w] = obj.rob.vlvrToVw(vl, vr);
@@ -57,6 +63,12 @@ classdef controller < handle
             
             dTheta = w*(dt);
             curTh = prevTh + dTheta;
+            
+            curTh = mod(curTh, 2*pi);
+            if curTh > pi
+                curTh = curTh-2*pi;
+            end
+            
             displacement = V*(dt);
             dx = displacement*cos(curTh-(dTheta/2));
             dy = displacement*sin(curTh-(dTheta/2));
@@ -70,7 +82,7 @@ classdef controller < handle
             errorConverted = curPose.bToARot() * [errorX; errorY];
 
             %----Tau stuff--------
-            tau = 40;
+            tau = 10;
             kx = 1/tau;
             if V < .001
                 ky = 0;
