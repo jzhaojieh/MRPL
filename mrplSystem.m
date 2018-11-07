@@ -58,8 +58,8 @@ classdef mrplSystem < handle
             obj.corYArr = [];
             obj.idealPoses = pose(0,0,0);
             
-            obj.vMax = .2;
-            obj.aMax = .75;
+            obj.vMax = .05;
+            obj.aMax = .1;
             
             obj.encoderTimeStamp = 0;
             obj.robFrontOffset = .08;
@@ -216,7 +216,7 @@ classdef mrplSystem < handle
                 end
                 uref = uref * sgn;
                 obj.robot.sendVelocity(uref, uref);
-                pause(.005);
+                pause(.02);
             end
             obj.robot.stop();
         end
@@ -238,7 +238,7 @@ classdef mrplSystem < handle
                 sgn = -1;
             end
             sf = finalAngle * (pi/180) * obj.rob.W2;
-            tf = (sf + obj.vMax^2/obj.aMax)/obj.vMax;
+            tf = (sf + obj.vMax^2/obj.aMax)/obj.vMax+.1;
             obj.tstamp = obj.encoderTimeStamp;
             
             prevIdealPose = obj.idealPoses(end);
@@ -272,7 +272,7 @@ classdef mrplSystem < handle
                 rW = uref * sgn;
                 lW = uref * -1 * sgn;
                 obj.robot.sendVelocity(rW, lW);
-                pause(.005);
+                pause(.02);
             end
             obj.robot.stop();
         end

@@ -36,6 +36,7 @@ classdef rangeImage < handle
                 obj.numPix = n;
                 if cleanFlag; obj.removeBadPoints(); end
             end
+            plot(1:360, ranges);
         end
         function removeBadPoints(obj)
         % takes all points above and below two range thresholds
@@ -126,7 +127,7 @@ classdef rangeImage < handle
                     [y_fit, delta] = polyval(p, pointSetY, S);
                     fitError = mean(delta)/sailDist;
                     fitError = .1;
-                    if ((numPoints >= 7) && (lambda(1) < 1.3) && (sailDist < obj.maxDist) && (sailDist ~= .053) && (sailLength < obj.sailDistance+obj.threshold) && (fitError > obj.fitErrorThreshhold))
+                    if ((numPoints >= 5) && (lambda(1) < 1.3) && (sailDist < obj.maxDist) && (sailDist ~= .053) && (sailLength < obj.sailDistance+obj.threshold) && (fitError > obj.fitErrorThreshhold))
                         isSail = true;
                         th = atan2(2*Ixy,Iyy-Ixx)/2.0;
                         return
@@ -144,7 +145,7 @@ classdef rangeImage < handle
          end
          end
          
-         function [centerX, centerY, centerTh] = getPalletLoc(obj, RobotSystem, leftIndex, rightIndex)
+         function [isZero, centerX, centerY, centerTh] = getPalletLoc(obj, RobotSystem, leftIndex, rightIndex)
              %go from leftIndex to rightIndex and see if any of the points
              %correspond to a pallet
              midpoint = leftIndex;
@@ -172,11 +173,14 @@ classdef rangeImage < handle
              
              centerTh = (robotPose.th + Th);
              if abs(centerTh) > pi
-                 centerTh = sign(centerTh)*(2*pi-abs(centerTh));
+                 centerTh = sign(centerTh)*(-1)*(2*pi-abs(centerTh));
              end
              centerX = (robotPose.x + sqrt(X^2 + Y^2) * cos(atan2(Y, X)+robotPose.th));
              centerY = (robotPose.y + sqrt(X^2 + Y^2) * sin(atan2(Y, X)+robotPose.th));
-             
+             isZero = 0;
+             if X == 0 && Y == 0 && Th == 0
+                 isZero = 1;
+             end
              disp([X, Y, Th, 0, robotPose.x, robotPose.y, robotPose.th, 0, centerX, centerY, centerTh]);
          end
 
