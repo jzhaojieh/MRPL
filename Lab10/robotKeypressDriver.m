@@ -4,6 +4,7 @@ classdef robotKeypressDriver < handle
     properties(Constant)
         linVel = 0.02;
         angVel = 0.06; % 0.006 / 0.1 (for W)
+        
     end
     properties(Access = private)
         fh=[];
@@ -15,7 +16,13 @@ classdef robotKeypressDriver < handle
         % drive the robot
             Vmax = robotKeypressDriver.linVel*vGain;
             dV = robotKeypressDriver.angVel*robotModel.W*vGain;
-            key = pollKeyboard();
+            key = 0;
+            kh = event.listener(gcf,'KeyPressFcn',@keyboardEventListener);
+            while (key == 0)
+               key = pollKeyboard();
+               disp(key);
+            end
+            
             if(key ~= false)
                 if(strcmp(key,'uparrow'))
                     disp('up');
@@ -32,8 +39,8 @@ classdef robotKeypressDriver < handle
                 elseif(strcmp(key,'s'))
                     disp('stop');
                     robot.sendVelocity(0.0,0.0);
-                end;
-            end;
+                end
+            end
         end
     end
     methods(Access = private) 
@@ -66,8 +73,8 @@ function res = pollKeyboard()
     % before calling this function.
     global keypressDataReady;
     global keypressKey;
-        keyboardDataReadyLast = keypressDataReady;
-        keypressDataReady = 0;
+    keyboardDataReadyLast = keypressDataReady;
+    keypressDataReady = 0;
     if(keyboardDataReadyLast)
         res = keypressKey;
         disp('gotOne');
