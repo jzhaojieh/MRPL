@@ -82,7 +82,7 @@ classdef controller < handle
             errorConverted = curPose.bToARot() * [errorX; errorY];
 
             %----Tau stuff--------
-            tau = 10;
+            tau = 40;
             kx = 1/tau;
             if V < .001
                 ky = 0;
