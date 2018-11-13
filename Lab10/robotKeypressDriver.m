@@ -16,41 +16,34 @@ classdef robotKeypressDriver < handle
         % drive the robot
             Vmax = robotKeypressDriver.linVel*vGain;
             dV = robotKeypressDriver.angVel*robotModel.W*vGain;
-            key = 0;
-            kh = event.listener(gcf,'KeyPressFcn',@keyboardEventListener);
-            while (key == 0)
-               key = pollKeyboard();
-               disp(key);
-            end
-            
-            if(key ~= false)
-                if(strcmp(key,'uparrow'))
-                    disp('up');
-                    robot.sendVelocity(Vmax,Vmax);
-                elseif(strcmp(key,'downarrow'))
-                    disp('down');
-                    robot.sendVelocity(-Vmax,-Vmax);
-                elseif(strcmp(key,'leftarrow'))
-                    disp('left');
-                    robot.sendVelocity(Vmax,Vmax+dV);
-                elseif(strcmp(key,'rightarrow'))
-                    disp('right');
-                    robot.sendVelocity(Vmax+dV,Vmax);
-                elseif(strcmp(key,'s'))
-                    disp('stop');
-                    robot.sendVelocity(0.0,0.0);
-                end
+            k = waitforbuttonpress;
+            value = double(get(gcf,'CurrentCharacter'));
+            if(value == 30)
+                disp('up');
+                robot.sendVelocity(Vmax,Vmax);
+            elseif(value == 31)
+                disp('down');
+                robot.sendVelocity(-Vmax,-Vmax);
+            elseif(value == 28)
+                disp('left');
+                robot.sendVelocity(Vmax,Vmax+dV);
+            elseif(value == 29)
+                disp('right');
+                robot.sendVelocity(Vmax+dV,Vmax);
+            elseif(value == 115)
+                disp('stop');
+                robot.sendVelocity(0.0,0.0);
             end
         end
     end
     methods(Access = private) 
     end
     methods(Access = public)
-        function obj = robotKeypressDriver(fh)
+        function obj = robotKeypressDriver()
         % create a robotKeypressDriver for the figure handle
         % normally you call this with gcf for fh
-        obj.fh = fh;
-        set(fh,'KeyPressFcn',@keyboardEventListener);
+        obj.fh = figure;
+        set(obj.fh,'KeyPressFcn',@keyboardEventListener);
         end
     end
 end
@@ -63,6 +56,7 @@ function keyboardEventListener(~,event)
     keypressFrame = keypressFrame + 1;
     keypressDataReady = 1;
     keypressKey = event.Key;
+    disp(event.Key);
 end
 function res = pollKeyboard()
     %pollKeyboard Waits until the callback says there is new data.
