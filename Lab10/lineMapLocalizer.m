@@ -38,9 +38,12 @@ classdef lineMapLocalizer < handle
             % throw away homogenous flag
             pi = pi(1:2,:);
             r2Array = zeros(size(obj.lines_p1,2),size(pi,2));
+ 
             for i = 1:size(obj.lines_p1,2)
-                [r2Array(i,:) , ~] = closestPointOnLineSegment(pi,...
-                obj.lines_p1(:,i),obj.lines_p2(:,i));
+                disp(obj.lines_p1(:,i));
+                disp(obj.lines_p2(:,i));
+                disp(pi);
+                [r2Array(i,:) , ~] = closestPointOnLineSegment(pi,obj.lines_p1(:,i),obj.lines_p2(:,i));
             end
             ro2 = min(r2Array,[],1);
         end
@@ -57,7 +60,7 @@ classdef lineMapLocalizer < handle
         % all points to all lines
         % transform the points
             worldPts = pose.bToA()*ptsInModelFrame;
-
+        
             r2 = obj.closestSquaredDistanceToLines(worldPts);
             r2(r2 == Inf) = [];
             err2 = sum(r2);
@@ -98,8 +101,28 @@ classdef lineMapLocalizer < handle
          % increase fit error are not included and termination
         % occurs thereafter.
         % Fill me in?
+            curPose = inPose;
+            success = 0;
             ids = obj.throwOutliers(inPose,ptsInModelFrame);
             ptsInModelFrame(:,ids) = [];
+            [curErr, J] = getJacobian(obj, pose(curPose), ptsInModelFrame);
+            prevErr = curErr;
+            outPose = curPose;
+            for i = 0:maxIters
+                curPose = curPose - obj.gain*2;
+                [curErr, J] = getJacobian(obj, pose(curPose), ptsInModelFrame);
+                gradMag = sqrt(sum(J .* J));
+                if (curErr < obj.errThresh || gradMag < obj.gradThresh)
+                    outPose = curPose;
+                    success = 1;
+                    break;
+                end
+                if (curErr > prevErr)
+                    break;
+                end
+                outPose = curPose;
+            end
+            outPose = pose(outPose);
         end
         function [rad2, po] = closestPointOnLineSegment(pi,p1,p2)
             % Given set of points and a line segment, returns the
