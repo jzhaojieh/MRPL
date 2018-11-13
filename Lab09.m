@@ -3,15 +3,17 @@
 clear;
 clear classes;
 
-%%%%%%%Setup mrplSystem%%%%%%%
+%%%%%%%Setup Constants%%%%%%%
 
-sim =        0    ;
+sim =        1    ;
 plot =       0    ;
 feedback =   1    ;
 cleanFlag =  0    ;
 skip =       1    ;
 leftIndex =  275  ;
 rightIndex = 95   ;
+
+%%%%%%%Setup mrplSystem%%%%%%%
 
 global RobotSystem
 RobotSystem = mrplSystem(sim, plot, feedback);
@@ -24,38 +26,51 @@ pause(4);
 %%%%%%%%%Laser Stuff%%%%%%%%%
 for i = 1:3
     
+    %%%%Wait until it picks up a pallet becuase it can be unreliable%%%%
     isZero = 1;
     while isZero == 1
-        ranges = RobotSystem.robot.laser.LatestMessage.Ranges;           
+        ranges = RobotSystem.robot.laser.LatestMessage.Ranges; 
+        %plot(1:360, ranges);
         image = rangeImage(ranges,skip,cleanFlag);
         [isZero, centroidX, centroidY, th] = image.getPalletLoc(RobotSystem, leftIndex, rightIndex);
         pause(.1);
     end
+    
+    %%%%execute trajectory to get closer to the pallet%%%%
     RobotSystem.executeTrajectoryToPose(centroidX + sign(centroidX) * (-.2), centroidY, th, 1);
     
+    %%%%Wait until it picks up a pallet becuase it can be unreliable%%%%
     isZero = 1;
     while isZero == 1
-        ranges = RobotSystem.robot.laser.LatestMessage.Ranges;           
+        ranges = RobotSystem.robot.laser.LatestMessage.Ranges;
+        %plot(1:360, ranges);
         image = rangeImage(ranges,skip,cleanFlag);
         [isZero, centroidX, centroidY, th] = image.getPalletLoc(RobotSystem, leftIndex, rightIndex);
         pause(.1);
     end
     
+    %%%%execute trajectory to pick up the pallet%%%%
     RobotSystem.executeTrajectoryToPose(centroidX + sign(centroidX) * (-.03), centroidY, th, 1);
     
+    %%%%Pick up pallet, wait, put it down again%%%%
     RobotSystem.robot.forksUp();
     pause(1);
-    
     RobotSystem.robot.forksDown();
     pause(1);
     
+    %%%%Back up and turn around%%%%
     RobotSystem.moveRelDist(-.1);
     RobotSystem.turnRelAngle(180);
     
+    %%%%Trying to do a thing where it returns to origin between pick-ups%%%%
+    %RobotSystem.executeTrajectoryToPose(0, 0, pi*(abs(RobotSystem.pid.actualPoses(end).th)>(pi/2)), 1);
+    
+    %%%%Wait 10 seconds if not a simulator (I got sick of waiting for the simulator%%%%
     pause(1);
     if sim == 0
         pause(9);
     end
+    
 end
 
 %%%%%%%%Shutdown Robot%%%%%%%%

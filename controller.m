@@ -64,9 +64,10 @@ classdef controller < handle
             dTheta = w*(dt);
             curTh = prevTh + dTheta;
             
-            curTh = mod(curTh, 2*pi);
-            if curTh > pi
-                curTh = curTh-2*pi;
+            %%%%Normalizing the angle%%%%
+            if abs(curTh) > pi
+                signTh = sign(curTh);
+                curTh = signTh*2*pi - curTh;
             end
             
             displacement = V*(dt);
@@ -82,7 +83,7 @@ classdef controller < handle
             errorConverted = curPose.bToARot() * [errorX; errorY];
 
             %----Tau stuff--------
-            tau = 40;
+            tau = 20;
             kx = 1/tau;
             if V < .001
                 ky = 0;
