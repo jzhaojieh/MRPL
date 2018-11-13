@@ -30,15 +30,15 @@ classdef mrplSystem < handle
                 ob1 = lineObject;
                 ob1.lines = [0 -.0635; 0 0.0635];
                 ob1.color = [1 0 0];
-                ob1.pose = [.5 0 0];
+                ob1.pose = [.45 0 0];
                 
                 ob2 = lineObject;
                 ob2.lines = [0 -.0635; 0 0.0635];
                 ob2.color = [1 0 0];
-                ob2.pose = [-.5 0 0];
+                ob2.pose = [-.45 0 0];
                 
                 ob3 = lineObject;
-                ob3.lines = [-1, -1; -1, 1; 1, 1; 1, -1; -1, -1];
+                ob3.lines = [-.5, -.5; -.5, .5; .5, .5; .5, -.5; -.5, -.5];
                 ob3.color = [1 0 0];
                 ob3.pose = [0 0 0];
                 
@@ -217,6 +217,10 @@ classdef mrplSystem < handle
                 uref = uref * sgn;
                 obj.robot.sendVelocity(uref, uref);
                 pause(.02);
+                lRead = obj.newenc(1);
+                rRead = obj.newenc(2);
+                encTime = obj.encoderTimeStamp - obj.tstamp;
+                [~, ~] = obj.pid.giveError(obj.pid, lRead, rRead, encTime, obj.idealPoses(end));
             end
             obj.robot.stop();
         end
@@ -273,7 +277,12 @@ classdef mrplSystem < handle
                 lW = uref * -1 * sgn;
                 obj.robot.sendVelocity(rW, lW);
                 pause(.02);
+                lRead = obj.newenc(1);
+                rRead = obj.newenc(2);
+                encTime = obj.encoderTimeStamp - obj.tstamp;
+                [~, ~] = obj.pid.giveError(obj.pid, lRead, rRead, encTime, obj.idealPoses(end));
             end
+            disp([obj.pid.actualPoses(end).x, obj.pid.actualPoses(end).y, obj.pid.actualPoses(end).th])
             obj.robot.stop();
         end
     end

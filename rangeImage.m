@@ -36,7 +36,6 @@ classdef rangeImage < handle
                 obj.numPix = n;
                 if cleanFlag; obj.removeBadPoints(); end
             end
-            plot(1:360, ranges);
         end
         function removeBadPoints(obj)
         % takes all points above and below two range thresholds
@@ -84,17 +83,28 @@ classdef rangeImage < handle
         sailDist = obj.rArray(midpoint);
         
         prevLambda = 0;
-        
+        i = 1;
         while lineFound == false
-            leftIndex = obj.dec(leftIndex);
-            rightIndex = obj.inc(rightIndex);
-            leftX = obj.xArray(leftIndex); leftY = obj.yArray(leftIndex);
-            rightX = obj.xArray(rightIndex); rightY = obj.yArray(rightIndex);
-            sailLength = sqrt((rightX - leftX)^2 + (rightY - leftY)^2);
+            %%%%This if statement alternates adding a point to the left and adding a point to the right%%%%
+            if mod(i, 2) == 1
+                leftIndex = obj.dec(leftIndex);
+                leftX = obj.xArray(leftIndex); leftY = obj.yArray(leftIndex);
+                rightX = pointSetX(end); rightY = pointSetY(end);
+                sailLength = sqrt((rightX - leftX)^2 + (rightY - leftY)^2);
+                
+                pointSetX = [leftX, pointSetX, rightX];
+                pointSetY = [leftY, pointSetY, rightY];
+            else
+                rightIndex = obj.inc(rightIndex);
+                leftX = pointSetX(1); leftY = pointSetY(1);
+                rightX = obj.xArray(rightIndex); rightY = obj.yArray(rightIndex);
+                sailLength = sqrt((rightX - leftX)^2 + (rightY - leftY)^2);
+                
+                pointSetX = [pointSetX, rightX];
+                pointSetY = [pointSetY, rightY];
+            end
             
-            pointSetX = [leftX, pointSetX, rightX];
-            pointSetY = [leftY, pointSetY, rightY];
-            
+            %%%%Calculates moment and eigenvalues%%%%
             numPoints = length(pointSetX);
             psXC = pointSetX - x;
             psYC = pointSetY - y;
@@ -105,14 +115,18 @@ classdef rangeImage < handle
             lambda = eig(Inertia);
             lambda = sqrt(lambda)*1000.0;
             
+            %%%%If the set of points has a length greater than a sail%%%%
             if sailLength > obj.sailDistance + obj.threshold
+                %%%%Computes change in the eigenvalues to see if it is a wall%%%%
                 if abs(prevLambda(1) - lambda(1)) > obj.Iyythreshold && length(pointSetX) > 3
-                    %is not a wall
+                    %%%%is not a wall%%%%
+                    
                     pointSetX(1) = [];
                     pointSetX(end) = [];
                     pointSetY(1) = [];
                     pointSetY(end) = [];
-                    %recalculate the lambda and stuff
+                    
+                    %%%%recalculate the values for only the sail%%%%
                     numPoints = length(pointSetX);
                     psXC = pointSetX - x;
                     psYC = pointSetY - y;
@@ -123,10 +137,13 @@ classdef rangeImage < handle
                     lambda = eig(Inertia);
                     lambda = sqrt(lambda)*1000.0;
                     sailLength = sqrt((pointSetX(end) - pointSetX(1))^2 + (pointSetY(end) - pointSetY(1))^2);
+                    
+                    %%%%Gets a linear fit to the points to see if it is actually a line%%%%
                     [p, S] = polyfit(pointSetX, pointSetY, 1);
                     [y_fit, delta] = polyval(p, pointSetY, S);
                     fitError = mean(delta)/sailDist;
                     fitError = .1;
+                    %%%%Checks data against a lot of constants to see if it should be counted as a valid sail%%%%
                     if ((numPoints >= 5) && (lambda(1) < 1.3) && (sailDist < obj.maxDist) && (sailDist ~= .053) && (sailLength < obj.sailDistance+obj.threshold) && (fitError > obj.fitErrorThreshhold))
                         isSail = true;
                         th = atan2(2*Ixy,Iyy-Ixx)/2.0;
@@ -136,24 +153,25 @@ classdef rangeImage < handle
                         return
                     end
                 else
-                    %is a wall
+                    %%%%This set of points describes a wall%%%%
                     isSail = false;
                     return
                 end
             end
             prevLambda = lambda;
+            i = i + 1;
          end
          end
          
          function [isZero, centerX, centerY, centerTh] = getPalletLoc(obj, RobotSystem, leftIndex, rightIndex)
-             %go from leftIndex to rightIndex and see if any of the points
-             %correspond to a pallet
+             %%%%go from leftIndex to rightIndex and see if any of the points correspond to a pallet%%%%
              midpoint = leftIndex;
              X = 0;
              Y = 0;
              Th = 0;
              palletPoints = 0;
              palletDist = 10;
+             %%%%Loops from left to right through the range specified%%%%
              while midpoint ~= rightIndex
                  [isSail, testTh, numPoints] = obj.findLineCandidate(midpoint);
                  if(isSail && numPoints > palletPoints && obj.rArray(midpoint) <= palletDist + obj.threshold && (obj.rArray(midpoint) > .054 || obj.rArray(midpoint) < .052))
@@ -169,8 +187,9 @@ classdef rangeImage < handle
                  midpoint = obj.inc(midpoint);
              end
              
-             robotPose = RobotSystem.pid.actualPoses(end);
              
+             %%%%Absolutely disgusting transform but it DOES work%%%%
+             robotPose = RobotSystem.pid.actualPoses(end);
              centerTh = (robotPose.th + Th);
              if abs(centerTh) > pi
                  centerTh = sign(centerTh)*(-1)*(2*pi-abs(centerTh));
@@ -181,6 +200,7 @@ classdef rangeImage < handle
              if X == 0 && Y == 0 && Th == 0
                  isZero = 1;
              end
+             %%%%[Detected coordinates, robot coordinaates, converted coordinates]%%%%
              disp([X, Y, Th, 0, robotPose.x, robotPose.y, robotPose.th, 0, centerX, centerY, centerTh]);
          end
 
