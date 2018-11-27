@@ -64,10 +64,10 @@ for i = 1:3
     %%%%Trying to do a thing where it returns to origin between pick-ups%%%%
     %RobotSystem.executeTrajectoryToPose(0, 0, pi*(abs(RobotSystem.pid.actualPoses(end).th)>(pi/2)), 1);
     
-    %%%%Wait 10 seconds if not a simulator (I got sick of waiting for the simulator%%%%
+    %%%%Wait 5 seconds if not a simulator (I got sick of waiting for shit%%%%
     pause(1);
     if sim == 0
-        pause(9);
+        pause(4);
     end
     
 end
