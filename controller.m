@@ -66,8 +66,7 @@ classdef controller < handle
             
             %%%%Normalizing the angle%%%%
             if abs(curTh) > pi
-                signTh = sign(curTh);
-                curTh = signTh*2*pi - curTh;
+                curTh = sign(curTh)*(-1)*(2*pi-abs(curTh));
             end
             
             displacement = V*(dt);

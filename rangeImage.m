@@ -5,8 +5,8 @@ classdef rangeImage < handle
         maxRangeForTarget = 1.0;
         sailDistance = 0.127;
         threshold = 0.01;
-        maxDist = 1;
-        Iyythreshold = 5;
+        maxDist = 1.5;
+        Iyythreshold = .5;
         fitErrorThreshhold = .005;
     end
     properties(Access = public)
@@ -69,8 +69,8 @@ classdef rangeImage < handle
          % than the provided maximum. Return the line fit error, the
          % number of pixels participating, and the angle of
          % the line relative to the sensor.
-         
-        % Compute the angles of surviving points
+        
+        oneSide = false;
         
         th = 0;
         lineFound = false;
@@ -89,14 +89,14 @@ classdef rangeImage < handle
             if mod(i, 2) == 1
                 leftIndex = obj.dec(leftIndex);
                 leftX = obj.xArray(leftIndex); leftY = obj.yArray(leftIndex);
-                rightX = pointSetX(end); rightY = pointSetY(end);
+                rightX = obj.xArray(rightIndex); rightY = obj.yArray(rightIndex);
                 sailLength = sqrt((rightX - leftX)^2 + (rightY - leftY)^2);
                 
-                pointSetX = [leftX, pointSetX, rightX];
-                pointSetY = [leftY, pointSetY, rightY];
+                pointSetX = [leftX, pointSetX];
+                pointSetY = [leftY, pointSetY];
             else
                 rightIndex = obj.inc(rightIndex);
-                leftX = pointSetX(1); leftY = pointSetY(1);
+                leftX = obj.xArray(leftIndex); leftY = obj.yArray(leftIndex);
                 rightX = obj.xArray(rightIndex); rightY = obj.yArray(rightIndex);
                 sailLength = sqrt((rightX - leftX)^2 + (rightY - leftY)^2);
                 
@@ -114,17 +114,38 @@ classdef rangeImage < handle
             Inertia = [Ixx Ixy;Ixy Iyy] / numPoints;
             lambda = eig(Inertia);
             lambda = sqrt(lambda)*1000.0;
-            
             %%%%If the set of points has a length greater than a sail%%%%
-            if sailLength > obj.sailDistance + obj.threshold
-                %%%%Computes change in the eigenvalues to see if it is a wall%%%%
-                if abs(prevLambda(1) - lambda(1)) > obj.Iyythreshold && length(pointSetX) > 3
-                    %%%%is not a wall%%%%
-                    
+            if sailLength > obj.sailDistance && ~oneSide
+                oneSide = true;
+                if mod(i, 2) == 1
                     pointSetX(1) = [];
-                    pointSetX(end) = [];
                     pointSetY(1) = [];
+                else
+                    pointSetX(end) = [];
                     pointSetY(end) = [];
+                end
+            elseif sailLength > obj.sailDistance
+                
+                %%%%Remove the points just added%%%%
+                if mod(i, 2) == 1
+                    pointSetX(1) = [];
+                    pointSetY(1) = [];
+                else
+                    pointSetX(end) = [];
+                    pointSetY(end) = [];
+                end
+                
+                %%%%Computes change in the eigenvalues to see if it is a wall%%%%
+                
+                disp([midpoint, abs(prevLambda(2) - lambda(2))]);
+                
+                if abs(prevLambda(2) - lambda(2)) < obj.Iyythreshold && length(pointSetX) > 3
+                    %%%%is probably not a wall%%%%
+                    
+                    %%%%Gets a linear fit to the points to see if it is actually a line%%%%
+                    [p, S] = polyfit(pointSetX, pointSetY, 1);
+                    [y_fit, delta] = polyval(p, pointSetY, S);
+                    fitError = mean(delta)/sailDist;
                     
                     %%%%recalculate the values for only the sail%%%%
                     numPoints = length(pointSetX);
@@ -138,13 +159,8 @@ classdef rangeImage < handle
                     lambda = sqrt(lambda)*1000.0;
                     sailLength = sqrt((pointSetX(end) - pointSetX(1))^2 + (pointSetY(end) - pointSetY(1))^2);
                     
-                    %%%%Gets a linear fit to the points to see if it is actually a line%%%%
-                    [p, S] = polyfit(pointSetX, pointSetY, 1);
-                    [y_fit, delta] = polyval(p, pointSetY, S);
-                    fitError = mean(delta)/sailDist;
-                    fitError = .1;
                     %%%%Checks data against a lot of constants to see if it should be counted as a valid sail%%%%
-                    if ((numPoints >= 5) && (lambda(1) < 1.3) && (sailDist < obj.maxDist) && (sailDist ~= .053) && (sailLength < obj.sailDistance+obj.threshold) && (fitError > obj.fitErrorThreshhold))
+                    if ((numPoints >= 3) && (sailDist < obj.maxDist) && (sailLength < obj.sailDistance + obj.threshold))
                         isSail = true;
                         th = atan2(2*Ixy,Iyy-Ixx)/2.0;
                         return
@@ -153,10 +169,13 @@ classdef rangeImage < handle
                         return
                     end
                 else
-                    %%%%This set of points describes a wall%%%%
+                    %%%%This set of points describes not a sail%%%%
                     isSail = false;
                     return
                 end
+            elseif oneSide
+                oneSide = false;
+                lambda = prevLambda;
             end
             prevLambda = lambda;
             i = i + 1;
@@ -165,17 +184,16 @@ classdef rangeImage < handle
          
          function [isZero, centerX, centerY, centerTh] = getPalletLoc(obj, RobotSystem, leftIndex, rightIndex)
              %%%%go from leftIndex to rightIndex and see if any of the points correspond to a pallet%%%%
-             midpoint = leftIndex;
+             midpoint = leftIndex+10;
              X = 0;
              Y = 0;
              Th = 0;
              palletPoints = 0;
              palletDist = 10;
              %%%%Loops from left to right through the range specified%%%%
-             while midpoint ~= rightIndex
+             while midpoint ~= rightIndex-10
                  [isSail, testTh, numPoints] = obj.findLineCandidate(midpoint);
-                 if(isSail && numPoints > palletPoints && obj.rArray(midpoint) <= palletDist + obj.threshold && (obj.rArray(midpoint) > .054 || obj.rArray(midpoint) < .052))
-                     palletPoints = numPoints;
+                 if(isSail && obj.rArray(midpoint) <= palletDist && (obj.rArray(midpoint) > .054 || obj.rArray(midpoint) < .052))
                      X = obj.xArray(midpoint);
                      Y = obj.yArray(midpoint);
                      Th = testTh;
@@ -187,21 +205,28 @@ classdef rangeImage < handle
                  midpoint = obj.inc(midpoint);
              end
              
-             
-             %%%%Absolutely disgusting transform but it DOES work%%%%
              robotPose = RobotSystem.pid.actualPoses(end);
-             centerTh = (robotPose.th + Th);
+             
+             goal = pose(X, Y, 0);
+             convertedGoal = pose.matToPoseVec(robotPose.bToA() * goal.bToA());
+             
+             centerX = convertedGoal(1);
+             centerY = convertedGoal(2);
+             centerTh = convertedGoal(3);
              if abs(centerTh) > pi
                  centerTh = sign(centerTh)*(-1)*(2*pi-abs(centerTh));
              end
-             centerX = (robotPose.x + sqrt(X^2 + Y^2) * cos(atan2(Y, X)+robotPose.th));
-             centerY = (robotPose.y + sqrt(X^2 + Y^2) * sin(atan2(Y, X)+robotPose.th));
+             
              isZero = 0;
+             
+             
              if X == 0 && Y == 0 && Th == 0
                  isZero = 1;
              end
+
+
              %%%%[Detected coordinates, robot coordinaates, converted coordinates]%%%%
-             disp([X, Y, Th, 0, robotPose.x, robotPose.y, robotPose.th, 0, centerX, centerY, centerTh]);
+             disp([X, Y, Th, 0, RobotSystem.idealPoses(end).x, RobotSystem.idealPoses(end).y, RobotSystem.idealPoses(end).th, 0, robotPose.x, robotPose.y, robotPose.th, 0, centerX, centerY, centerTh]);
          end
 
          function num = numPixels(obj)

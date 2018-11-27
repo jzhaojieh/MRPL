@@ -18,8 +18,10 @@ classdef mrplSystem < handle
             tprev
             FaceOffset
             robFrontOffset
-            vMax
-            aMax
+            vmax
+            amax
+            eold
+            eint
     end
     
     methods
@@ -58,8 +60,8 @@ classdef mrplSystem < handle
             obj.corYArr = [];
             obj.idealPoses = pose(0,0,0);
             
-            obj.vMax = .05;
-            obj.aMax = .1;
+            obj.vmax = .05;
+            obj.amax = .1;
             
             obj.encoderTimeStamp = 0;
             obj.robFrontOffset = .08;
@@ -115,8 +117,7 @@ classdef mrplSystem < handle
                 corPose = worldPose.bToA * [corRelPose(1); corRelPose(2); corRelPose(3)];
                 idealTh = (corPose(3) + prevIdealPose.th);
                 if abs(idealTh) > pi
-                    signTh = sign(idealTh);
-                    idealTh = signTh*2*pi - idealTh;
+                    idealTh = sign(idealTh)*(-1)*(2*pi-abs(idealTh));
                 end
                 obj.idealPoses = [obj.idealPoses, pose(corPose(1) + prevIdealPose.x, corPose(2) + prevIdealPose.y, idealTh)];
                 
@@ -180,47 +181,46 @@ classdef mrplSystem < handle
                
         function moveRelDist(obj, dist)
             %move forward or backward a specified distance and stop
-            sgn = 1;
-            if dist < 0
-                sgn = -1;
-            end
+            obj.eold = 0;
+            obj.eint = 0;
             %make sure the velocity is such that the distance will take at
             %least a second  
-            timeStart = tic();
-            t = toc(timeStart);
-            tramp = obj.vMax / obj.aMax;
             sf = dist;
-            tf = (abs(sf) + obj.vMax^2/obj.aMax)/obj.vMax;
-            obj.tstamp = obj.encoderTimeStamp;
-            
+            tf = (abs(sf) + obj.vmax^2/obj.amax)/obj.vmax;
+            tstart = obj.encoderTimeStamp;
+            lstart = obj.newenc(1);
+            rstart = obj.newenc(2);
+            ddelay = 0;
+            prevt = 0;
+            tdelay = .02;
+            t = obj.encoderTimeStamp - tstart;
             prevIdealPose = obj.idealPoses(end);
             obj.idealPoses = [obj.idealPoses, pose(prevIdealPose.x+dist*cos(prevIdealPose.th), prevIdealPose.y+dist*sin(prevIdealPose.th), prevIdealPose.th)];
+            curDist = 0;
             
-            while t < tf+1
-                t = toc(timeStart);
+            while (t < (tf + 1) && abs(dist - (curDist)) > 0.0001)
                 lRead = obj.newenc(1);
                 rRead = obj.newenc(2);
-                encTime = obj.encoderTimeStamp - obj.tstamp;
-                [~, ~] = obj.pid.giveError(obj.pid, lRead, rRead, encTime, obj.idealPoses(end));
+                t = obj.encoderTimeStamp - tstart;
+                dt = t-prevt;
+                prevt = t;
+                [~, ~] = obj.pid.giveError(obj.pid, lRead, rRead, t, obj.idealPoses(end));
+                dl = lRead-lstart;
+                dr = rRead-rstart;
+                curDist = (dl + dr)/2;
+                uref = obj.trapezoidalVelocityProfile(t , dist, sign(dist));
+                ddelay = ddelay + obj.trapezoidalVelocityProfile(t - tdelay, dist, sign(dist))*dt;
+                upid = obj.getpid(curDist, dt, ddelay);
+                
+                u = upid + uref;
 
-                if t < 0 || t >= tf
-                    uref = 0;
-                elseif t < tramp
-                    uref = obj.aMax * t;
-                elseif (tf - t) < tramp
-                    uref = obj.aMax * (tf - t);
-                elseif tramp < t && t < (tf - tramp)
-                    uref = obj.vMax;
-                else
-                    uref = 0;
-                end
-                uref = uref * sgn;
-                obj.robot.sendVelocity(uref, uref);
-                pause(.02);
+                obj.robot.sendVelocity(u, u);
+                
+                pause(.05);
                 lRead = obj.newenc(1);
                 rRead = obj.newenc(2);
-                encTime = obj.encoderTimeStamp - obj.tstamp;
-                [~, ~] = obj.pid.giveError(obj.pid, lRead, rRead, encTime, obj.idealPoses(end));
+                t = obj.encoderTimeStamp - tstart;
+                [~, ~] = obj.pid.giveError(obj.pid, lRead, rRead, t, obj.idealPoses(end));
             end
             obj.robot.stop();
         end
@@ -230,9 +230,6 @@ classdef mrplSystem < handle
             % least a second
             %make sure the velocity is such that the distance will take at
             %least a second  
-            timeStart = tic();
-            t = toc(timeStart);
-            tramp = obj.vMax / obj.aMax;
             finalAngle = mod (angle, 360);
             if finalAngle > 180
                 finalAngle = 180-finalAngle;
@@ -242,7 +239,8 @@ classdef mrplSystem < handle
                 sgn = -1;
             end
             sf = finalAngle * (pi/180) * obj.rob.W2;
-            tf = (sf + obj.vMax^2/obj.aMax)/obj.vMax+.1;
+            tf = (abs(sf) + obj.vmax^2/obj.amax)/obj.vmax;
+            
             obj.tstamp = obj.encoderTimeStamp;
             
             prevIdealPose = obj.idealPoses(end);
@@ -254,36 +252,103 @@ classdef mrplSystem < handle
             end
             
             obj.idealPoses = [obj.idealPoses, pose(prevIdealPose.x, prevIdealPose.y, idealAngle)];
-            
-            while t < tf+1
-                t = toc(timeStart);
-                lRead = obj.newenc(1);
-                rRead = obj.newenc(2);
-                encTime = obj.encoderTimeStamp - obj.tstamp;
-                [~, ~] = obj.pid.giveError(obj.pid, lRead, rRead, encTime, obj.idealPoses(end));
 
-                if t < 0 || t > tf
-                    uref = 0;
-                elseif t < tramp
-                    uref = obj.aMax * t;
-                elseif (tf - t) < tramp
-                    uref = obj.aMax * (tf - t);
-                elseif tramp < t && t < (tf - tramp)
-                    uref = obj.vMax;
-                else
-                    uref = 0;
-                end
-                rW = uref * sgn;
-                lW = uref * -1 * sgn;
-                obj.robot.sendVelocity(rW, lW);
-                pause(.02);
+            prevActualPose = obj.pid.actualPoses(end);
+            
+            actualAngle = prevActualPose.th + finalAngle*(pi/180);
+            actualAngle = mod(actualAngle, 2*pi);
+            if actualAngle > pi
+                actualAngle = actualAngle-2*pi;
+            end
+            
+            obj.pid.actualPoses = [obj.pid.actualPoses, pose(prevActualPose.x, prevActualPose.y, actualAngle)];
+            
+            obj.eold = 0;
+            obj.eint = 0;
+
+            tstart = obj.encoderTimeStamp;
+            lstart = obj.newenc(1);
+            rstart = obj.newenc(2);
+            ddelay = 0;
+            prevt = 0;
+            tdelay = .02;
+            t = obj.encoderTimeStamp - tstart;
+            curDist = 0;
+            
+            while (t < (tf+1) && abs(sf - (curDist)) > 0.0001)
                 lRead = obj.newenc(1);
                 rRead = obj.newenc(2);
-                encTime = obj.encoderTimeStamp - obj.tstamp;
-                [~, ~] = obj.pid.giveError(obj.pid, lRead, rRead, encTime, obj.idealPoses(end));
+                t = obj.encoderTimeStamp - tstart;
+                dt = t-prevt;
+                prevt = t;
+                %[~, ~] = obj.pid.giveError(obj.pid, lRead, rRead, t, obj.idealPoses(end));
+                dl = lRead-lstart;
+                dr = rRead-rstart;
+                curDist = (abs(dl) + abs(dr))/2;
+                uref = obj.trapezoidalVelocityProfile(t , sf, sgn);
+                ddelay = ddelay + obj.trapezoidalVelocityProfile(t - tdelay, sf, sgn)*dt;
+                upid = obj.getpid(curDist, dt, ddelay);
+                
+                u = upid + uref;
+
+                obj.robot.sendVelocity(u, -u);
+                
+                pause(.05);
             end
-            disp([obj.pid.actualPoses(end).x, obj.pid.actualPoses(end).y, obj.pid.actualPoses(end).th])
             obj.robot.stop();
+        end
+        
+        function upid = getpid(obj, d, dt, ddelay)
+            kp = 1;
+            kd = .01;
+            ki = .005;
+
+            enow = ddelay-d;   
+            if dt ~= 0
+                edir = abs((enow - obj.eold)/dt);
+            else
+                edir = 0;
+            end
+            obj.eint = obj.eint + (enow * dt);
+            if abs(obj.eint) > 0.1
+                if obj.eint > 0
+                    obj.eint = 0.1;
+                else
+                    obj.eint = -1 * 0.1;
+                end
+            end
+            upid = (enow * kp) + (edir * kd) + (obj.eint * ki);
+            if abs(upid) > 0.3
+                if upid > 0
+                    upid = 0.3;
+                else
+                    upid = -1 * 0.3;
+                end
+            end
+            obj.eold = enow;
+        end
+        
+        function uref = trapezoidalVelocityProfile(obj, t, dist, sgn)
+            % Returns the velocity command of a trapezoidal profile of maximum
+            % acceleration amax and maximum velocity vmax whose ramps are of
+            % duration tf. Sgn is the sign of the desired velocities.
+            % Returns 0 if t is negative. 
+            tramp = obj.vmax / obj.amax;
+            sf = dist;
+            tf = (abs(sf) + obj.vmax^2/obj.amax)/obj.vmax;
+            
+            if t < 0 || t >= tf
+                uref = 0;
+            elseif t < tramp
+                uref = obj.amax * t;
+            elseif (tf - t) < tramp
+                uref = obj.amax * (tf - t);
+            elseif tramp < t && t < (tf - tramp)
+                uref = obj.vmax;
+            else
+                uref = 0;
+            end
+            uref = uref * sgn;
         end
     end
 end

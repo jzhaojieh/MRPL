@@ -7,11 +7,11 @@ clear classes;
 
 sim =        1    ;
 plot =       0    ;
-feedback =   1    ;
+feedback =   0    ;
 cleanFlag =  0    ;
 skip =       1    ;
-leftIndex =  275  ;
-rightIndex = 95   ;
+leftIndex =  275+50  ;
+rightIndex = 95-50   ;
 
 %%%%%%%Setup mrplSystem%%%%%%%
 
@@ -20,7 +20,6 @@ RobotSystem = mrplSystem(sim, plot, feedback);
 RobotSystem.robot.startLaser();
 RobotSystem.robot.encoders.NewMessageFcn=@encoderEventListener;
 RobotSystem.robot.forksDown();
-
 pause(4);
 
 %%%%%%%%%Laser Stuff%%%%%%%%%
