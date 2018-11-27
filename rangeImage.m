@@ -82,7 +82,7 @@ classdef rangeImage < handle
         rightIndex = midpoint;
         sailDist = obj.rArray(midpoint);
         
-        prevLambda = 0;
+        prevLambda = [0,0];
         i = 1;
         while lineFound == false
             %%%%This if statement alternates adding a point to the left and adding a point to the right%%%%
@@ -137,7 +137,6 @@ classdef rangeImage < handle
                 end
                 
                 %%%%Computes change in the eigenvalues to see if it is a wall%%%%
-                disp([midpoint, abs(prevLambda(2) - lambda(2))]);
                 if abs(prevLambda(2) - lambda(2)) > obj.Iyythreshold && length(pointSetX) > 3
                     %%%%is probably not a wall%%%%
                     
@@ -193,10 +192,8 @@ classdef rangeImage < handle
              %%%%Loops from left to right through the range specified%%%%
              while midpoint ~= rightIndex-10
                  [isSail, testTh, numPoints] = obj.findLineCandidate(midpoint);
-                 if(isSail)
-                     disp([midpoint, numPoints, obj.rArray(midpoint), obj.xArray(midpoint), obj.yArray(midpoint)]);
-                 end
-                 if(isSail && obj.rArray(midpoint) <= palletDist && (obj.rArray(midpoint) > .054 || obj.rArray(midpoint) < .052))
+                 if(isSail && numPoints > palletPoints && obj.rArray(midpoint) <= palletDist && (obj.rArray(midpoint) > .054 || obj.rArray(midpoint) < .052))
+                     palletPoints = numPoints;
                      X = obj.xArray(midpoint);
                      Y = obj.yArray(midpoint);
                      Th = testTh;

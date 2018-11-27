@@ -5,7 +5,7 @@ clear classes;
 
 %%%%%%%Setup Constants%%%%%%%
 
-sim =        1    ;
+sim =        0    ;
 plot =       0    ;
 feedback =   1    ;
 cleanFlag =  0    ;
@@ -36,7 +36,7 @@ for i = 1:3
     end
     
     %%%%execute trajectory to get closer to the pallet%%%%
-    RobotSystem.executeTrajectoryToPose(centroidX + sign(centroidX) * (-.2), centroidY, th, 1);
+    RobotSystem.executeTrajectoryToPose(centroidX + sign(centroidX) * (-.25), centroidY, th, 1);
     
     %%%%Wait until it picks up a pallet becuase it can be unreliable%%%%
     isZero = 1;
