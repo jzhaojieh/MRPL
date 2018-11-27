@@ -6,7 +6,7 @@ classdef rangeImage < handle
         sailDistance = 0.127;
         threshold = 0.01;
         maxDist = 1.5;
-        Iyythreshold = .5;
+        Iyythreshold = 1;
         fitErrorThreshhold = .005;
     end
     properties(Access = public)
@@ -124,6 +124,7 @@ classdef rangeImage < handle
                     pointSetX(end) = [];
                     pointSetY(end) = [];
                 end
+                lambda = prevLambda;
             elseif sailLength > obj.sailDistance
                 
                 %%%%Remove the points just added%%%%
@@ -136,10 +137,8 @@ classdef rangeImage < handle
                 end
                 
                 %%%%Computes change in the eigenvalues to see if it is a wall%%%%
-                
                 disp([midpoint, abs(prevLambda(2) - lambda(2))]);
-                
-                if abs(prevLambda(2) - lambda(2)) < obj.Iyythreshold && length(pointSetX) > 3
+                if abs(prevLambda(2) - lambda(2)) > obj.Iyythreshold && length(pointSetX) > 3
                     %%%%is probably not a wall%%%%
                     
                     %%%%Gets a linear fit to the points to see if it is actually a line%%%%
@@ -158,9 +157,8 @@ classdef rangeImage < handle
                     lambda = eig(Inertia);
                     lambda = sqrt(lambda)*1000.0;
                     sailLength = sqrt((pointSetX(end) - pointSetX(1))^2 + (pointSetY(end) - pointSetY(1))^2);
-                    
                     %%%%Checks data against a lot of constants to see if it should be counted as a valid sail%%%%
-                    if ((numPoints >= 3) && (sailDist < obj.maxDist) && (sailLength < obj.sailDistance + obj.threshold))
+                    if ((numPoints >= 3) && (sailDist < obj.maxDist) && (sailLength < obj.sailDistance + obj.threshold) && abs(lambda(2)) < 50)
                         isSail = true;
                         th = atan2(2*Ixy,Iyy-Ixx)/2.0;
                         return
@@ -176,6 +174,8 @@ classdef rangeImage < handle
             elseif oneSide
                 oneSide = false;
                 lambda = prevLambda;
+                isSail = false;
+                return
             end
             prevLambda = lambda;
             i = i + 1;
@@ -193,6 +193,9 @@ classdef rangeImage < handle
              %%%%Loops from left to right through the range specified%%%%
              while midpoint ~= rightIndex-10
                  [isSail, testTh, numPoints] = obj.findLineCandidate(midpoint);
+                 if(isSail)
+                     disp([midpoint, numPoints, obj.rArray(midpoint), obj.xArray(midpoint), obj.yArray(midpoint)]);
+                 end
                  if(isSail && obj.rArray(midpoint) <= palletDist && (obj.rArray(midpoint) > .054 || obj.rArray(midpoint) < .052))
                      X = obj.xArray(midpoint);
                      Y = obj.yArray(midpoint);
