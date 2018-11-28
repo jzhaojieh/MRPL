@@ -4,8 +4,8 @@ classdef lineMapLocalizer < handle
  % the map.
 
      properties(Constant)
-        maxErr = 0.05; % 5 cm
-        minPts = 5; % min # of points that must match
+        maxErr = 0.01; % 5 cm
+        minPts = 3; % min # of points that must match
      end
 
      properties(Access = private)
@@ -15,12 +15,12 @@ classdef lineMapLocalizer < handle
          lines_p1 = [];
          lines_p2 = [];
          gain = 0.3;
-         errThresh = 0.01;
+         errThresh = 0.005;
          gradThresh = 0.0005;
          ptsInRangeImage;
      end
      
-     methods
+     methods(Static = true)
      
          function obj = lineMapLocalizer(lines_p1,lines_p2,gain,errThresh,gradThresh)
              % create a lineMapLocalizer
@@ -37,13 +37,11 @@ classdef lineMapLocalizer < handle
             % pi is an array of 2d points
             % throw away homogenous flag
             pi = pi(1:2,:);
+            
             r2Array = zeros(size(obj.lines_p1,2),size(pi,2));
  
             for i = 1:size(obj.lines_p1,2)
-                disp(obj.lines_p1(:,i));
-                disp(obj.lines_p2(:,i));
-                disp(pi);
-                [r2Array(i,:) , ~] = closestPointOnLineSegment(pi,obj.lines_p1(:,i),obj.lines_p2(:,i));
+                [r2Array(i,:) , ~] = lineMapLocalizer.closestPointOnLineSegment(pi, obj.lines_p1(:,i), obj.lines_p2(:,i));
             end
             ro2 = min(r2Array,[],1);
         end
@@ -51,7 +49,7 @@ classdef lineMapLocalizer < handle
          function ids = throwOutliers(obj,pose,ptsInModelFrame)
         % Find ids of outliers in a scan.
             worldPts = pose.bToA()*ptsInModelFrame;
-            r2 = obj.closestSquaredDistanceToLines(worldPts);
+            r2 = obj.closestSquaredDistanceToLines(obj, worldPts);
             ids = find(r2 > lineMapLocalizer.maxErr*lineMapLocalizer.maxErr);
          end
         
@@ -61,7 +59,7 @@ classdef lineMapLocalizer < handle
         % transform the points
             worldPts = pose.bToA()*ptsInModelFrame;
         
-            r2 = obj.closestSquaredDistanceToLines(worldPts);
+            r2 = obj.closestSquaredDistanceToLines(obj, worldPts);
             r2(r2 == Inf) = [];
             err2 = sum(r2);
             num = length(r2);
@@ -69,30 +67,30 @@ classdef lineMapLocalizer < handle
                 avgErr2 = err2/num;
             else
             % not enough points to make a guess
+                disp("you suck");
+                disp(worldPts);
                 avgErr2 = inf;
             end
         end
-        function [err2_Plus0,J] = getJacobian(obj,poseIn,modelPts)
+        function [err2_Plus0, J] = getJacobian(obj,poseIn,modelPts)
         % Computes the gradient of the error function
-
-            err2_Plus0 = fitError(obj,poseIn,modelPts);
-    
+            err2_Plus0 = obj.fitError(obj, poseIn, modelPts);
             eps = 1e-9;
             dp = [eps ; 0.0 ; 0.0];
-            newPose = pose(poseIn.poseVec+dp);
+            newPose = pose(poseIn.getPoseVec+dp);
             % Fill me in...
-            errorX = (fitError(obj,newPose,modelPts) - err2_Plus0)/eps;
+            errorX = (obj.fitError(obj,newPose,modelPts) - err2_Plus0)/eps;
                         
             dp = [0.0 ; eps ; 0.0];
-            newPose = pose(poseIn.poseVec+dp);
-            errorY = (fitError(obj,newPose,modelPts) - err2_Plus0)/eps;
+            newPose = pose(poseIn.getPoseVec+dp);
+            errorY = (obj.fitError(obj,newPose,modelPts) - err2_Plus0)/eps;
             
             dp = [0.0 ; 0.0 ; eps];
-            newPose = pose(poseIn.poseVec+dp);
-            errorTh = (fitError(obj,newPose,modelPts) - err2_Plus0)/eps;
+            newPose = pose(poseIn.getPoseVec+dp);
+            errorTh = (obj.fitError(obj,newPose,modelPts) - err2_Plus0)/eps;
             J = [errorX;errorY;errorTh];
         end
-        function [success, outPose] = refinePose(obj,inPose,ptsInModelFrame,maxIters)
+        function [success, outPose] = refinePose(obj, inPose, ptsInModelFrame, maxIters)
          % refine robot pose in world (inPose) based on lidar
          % registration. Terminates if maxIters iterations is
         % exceeded or if insufficient points match the lines.
@@ -103,26 +101,21 @@ classdef lineMapLocalizer < handle
         % Fill me in?
             curPose = inPose;
             success = 0;
-            ids = obj.throwOutliers(inPose,ptsInModelFrame);
+            ids = obj.throwOutliers(obj, inPose, ptsInModelFrame);
             ptsInModelFrame(:,ids) = [];
-            [curErr, J] = getJacobian(obj, pose(curPose), ptsInModelFrame);
-            prevErr = curErr;
-            outPose = curPose;
+            [curErr, J] = obj.getJacobian(obj, curPose, ptsInModelFrame);
             for i = 0:maxIters
-                curPose = curPose - obj.gain*2;
-                [curErr, J] = getJacobian(obj, pose(curPose), ptsInModelFrame);
                 gradMag = sqrt(sum(J .* J));
-                if (curErr < obj.errThresh || gradMag < obj.gradThresh)
+                curPose = pose(curPose.getPoseVec - obj.gain*2);
+                [curErr, J] = obj.getJacobian(obj, curPose, ptsInModelFrame);
+                disp(curErr);
+                if (curErr < obj.errThresh)
                     outPose = curPose;
                     success = 1;
                     break;
                 end
-                if (curErr > prevErr)
-                    break;
-                end
-                outPose = curPose;
             end
-            outPose = pose(outPose);
+            outPose = curPose;
         end
         function [rad2, po] = closestPointOnLineSegment(pi,p1,p2)
             % Given set of points and a line segment, returns the
@@ -175,16 +168,5 @@ classdef lineMapLocalizer < handle
                 rad2(flag3) = inf;
             end
         end
-   end
-         
-        
-        
-        
-        
-        
-        
-        
-
-        
-        
+     end    
 end
