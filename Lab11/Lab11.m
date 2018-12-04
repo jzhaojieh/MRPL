@@ -16,9 +16,11 @@ rightIndex = 95-50   ;
 %%%%%%%Setup mrplSystem%%%%%%%
 
 global RobotSystem
+global arr
 RobotSystem = mrplSystem(sim, plot, feedback);
 RobotSystem.robot.startLaser();
 RobotSystem.robot.encoders.NewMessageFcn=@encoderEventListener;
+RobotSystem.robot.laser.NewMessageFcn=@laserEventListener;
 pause(4);
 
 %%%%Preset the robot's pose%%%%
@@ -57,4 +59,9 @@ function encoderEventListener(handle, event)
     RobotSystem.encoderTimeStamp = double(event.Header.Stamp.Sec) + double(event.Header.Stamp.Nsec)/1e9;
     e = [RobotSystem.robot.encoders.LatestMessage.Vector.X, RobotSystem.robot.encoders.LatestMessage.Vector.Y];
     RobotSystem.newenc = e;
+end
+
+function laserEventListener(handle, event)
+    global RobotSystem
+    arr = RobotSystem.robot.laser.LatestMessage.Ranges;
 end
