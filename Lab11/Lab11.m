@@ -21,12 +21,16 @@ RobotSystem.robot.startLaser();
 RobotSystem.robot.encoders.NewMessageFcn=@encoderEventListener;
 pause(4);
 
-%%%%%%%%%Lab Run Stuff%%%%%%%%%
+%%%%Preset the robot's pose%%%%
 
 RobotSystem.pid.actualPoses(end) = pose(0.6096,0.6096,pi()/2.0);
+RobotSystem.pid.actualXs(end) = 0.6096;
+RobotSystem.pid.actualYs(end) = 0.6096;
+RobotSystem.pid.thArr(end) = pi()/2.0;
 RobotSystem.pid.fusionPoses(end) = pose(0.6096,0.6096,pi()/2.0);
 RobotSystem.idealPoses(end) = pose(0.6096,0.6096,pi()/2.0);
 
+%%%%%%%%%Lab Run Stuff%%%%%%%%%
 
 RobotSystem.executeTrajectoryToPose(0.3048, 0.9144, pi()/2.0, 1);
 RobotSystem.pid.actualPoses(end) = RobotSystem.pid.fusionPoses(end);
