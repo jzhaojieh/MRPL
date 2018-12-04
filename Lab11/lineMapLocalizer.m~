@@ -108,7 +108,7 @@ classdef lineMapLocalizer < handle
                 [curErr, J] = obj.getJacobian(obj, curPose, ptsInModelFrame);
                 gradMag = sqrt(sum(J .* J));
                 disp([curErr, gradMag]);
-                curPose = pose(curPose.getPoseVec - [obj.gain*J(1); obj.gain*J(2); obj.gain*J(3)]);
+                curPose = pose(curPose.getPoseVec - [obj.gain*curErr*J(1); obj.gain*curErr*J(2); obj.gain*J(3)]);
                 if (curErr < obj.errThresh)
                     disp("success!");
                     outPose = curPose;

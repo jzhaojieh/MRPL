@@ -20,14 +20,15 @@ RobotSystem = mrplSystem(sim, plot, feedback);
 RobotSystem.robot.startLaser();
 RobotSystem.robot.encoders.NewMessageFcn=@encoderEventListener;
 RobotSystem.robot.laser.NewMessageFcn=@laserEventListener;
-p1 = [ 0.2  ; 0   ]; 
-p2 = [ 1.22 ; 0   ]; 
-p3=  [ 0    ; 0.2 ]; 
-p4=  [ 0    ; 1.22];
-lines_p1 = [p1 p2];
-lines_p2 = [p3 p4];
+p1 = [-1 ; -2];
+p2 = [ 1 ; -2];
+p3 = [ 2 ; 2];
+p4 = [-2 ; 2];
+lines_p1 = [p1 p2 p3 p4];
+lines_p2 = [p2 p3 p4 p1];
 global laser
-laser = lineMapLocalizer(lines_p1, lines_p2, 0.1, 0.01, 0.0005);
+laser = lineMapLocalizer(lines_p1, lines_p2, 0.3, 0.01, 0.0005);
+pause(4);
 
 %%%%Preset the robot's pose%%%%
 
@@ -39,8 +40,6 @@ RobotSystem.pid.fusionPoses(end) = pose(0.6096,0.6096,pi()/2.0);
 RobotSystem.idealPoses(end) = pose(0.6096,0.6096,pi()/2.0);
 
 %%%%%%%%%Lab Run Stuff%%%%%%%%%
-
-pause(4);
 
 while true
    continue 
@@ -93,8 +92,9 @@ function laserEventListener(handle, event)
     for i = 1:360
         inputPoints = [inputPoints, [arr(i)*sin(i-5);arr(i)*cos(i-5);1]];
     end
-    [success, curPose] = laser.refinePose(laser, RobotSystem.pid.fusionPoses(end), inputPoints, 50);
+    [success, curPose] = laser.refinePose(laser, RobotSystem.pid.fusionPoses(end), inputPoints, 20);
     if(success)
         RobotSystem.pid.fusionPoses(end) = pose((RobotSystem.pid.fusionPoses(end).getPoseVec + curPose.getPoseVec)/2);
     end
+    pause(.5);
 end
