@@ -27,7 +27,7 @@ p4=  [ 0    ; 1.22];
 lines_p1 = [p1 p2];
 lines_p2 = [p3 p4];
 global laser
-laser = lineMapLocalizer(lines_p1, lines_p2, 0.1, 0.01, 0.0005);
+laser = lineMapLocalizer(lines_p1, lines_p2, 0.05, 0.0005);
 
 %%%%Preset the robot's pose%%%%
 
@@ -42,12 +42,9 @@ RobotSystem.idealPoses(end) = pose(0.6096,0.6096,pi()/2.0);
 
 pause(4);
 
-while true
-   continue 
-end
-
 RobotSystem.executeTrajectoryToPose(0.3048, 0.9144, pi()/2.0, 1);
 
+%%%%Set the actual pose equal to the "fused" pose%%%%
 RobotSystem.pid.actualPoses(end) = RobotSystem.pid.fusionPoses(end);
 RobotSystem.pid.actualXs(end) = RobotSystem.pid.fusionPoses(end).x;
 RobotSystem.pid.actualYs(end) = RobotSystem.pid.fusionPoses(end).y;
@@ -55,6 +52,7 @@ RobotSystem.pid.thArr(end) = RobotSystem.pid.fusionPoses(end).th;
 
 RobotSystem.executeTrajectoryToPose(0.9144, 0.3048, 0, 1);
 
+%%%%Set the actual pose equal to the "fused" pose%%%%
 RobotSystem.pid.actualPoses(end) = RobotSystem.pid.fusionPoses(end);
 RobotSystem.pid.actualXs(end) = RobotSystem.pid.fusionPoses(end).x;
 RobotSystem.pid.actualYs(end) = RobotSystem.pid.fusionPoses(end).y;
@@ -62,6 +60,7 @@ RobotSystem.pid.thArr(end) = RobotSystem.pid.fusionPoses(end).th;
 
 RobotSystem.executeTrajectoryToPose(0.6096, 0.6096, pi()/2.0, 1);
 
+%%%%Set the actual pose equal to the "fused" pose%%%%
 RobotSystem.pid.actualPoses(end) = RobotSystem.pid.fusionPoses(end);
 RobotSystem.pid.actualXs(end) = RobotSystem.pid.fusionPoses(end).x;
 RobotSystem.pid.actualYs(end) = RobotSystem.pid.fusionPoses(end).y;

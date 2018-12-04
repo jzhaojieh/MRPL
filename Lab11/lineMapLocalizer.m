@@ -22,11 +22,10 @@ classdef lineMapLocalizer < handle
      
      methods(Static = true)
      
-         function obj = lineMapLocalizer(lines_p1, lines_p2, gain, errThresh, gradThresh)
+         function obj = lineMapLocalizer(lines_p1, lines_p2, errThresh, gradThresh)
              % create a lineMapLocalizer
              obj.lines_p1 = lines_p1;
              obj.lines_p2 = lines_p2;
-             obj.gain = gain;
              obj.errThresh = errThresh;
              obj.gradThresh = gradThresh;
          end
@@ -69,11 +68,12 @@ classdef lineMapLocalizer < handle
             % not enough points to make a guess
                 avgErr2 = inf;
             end
-        end
+         end
+        
         function [err2_Plus0, J] = getJacobian(obj,poseIn,modelPts)
         % Computes the gradient of the error function
             err2_Plus0 = obj.fitError(obj, poseIn, modelPts);
-            eps = 1e-2;
+            eps = 1e-5;
             dp = [eps ; 0.0 ; 0.0];
             newPose = pose(poseIn.getPoseVec+dp);
             % Fill me in...
@@ -88,6 +88,7 @@ classdef lineMapLocalizer < handle
             errorTh = (obj.fitError(obj,newPose,modelPts) - err2_Plus0)/eps;
             J = [errorX;errorY;errorTh];
         end
+        
         function [success, outPose] = refinePose(obj, inPose, ptsInModelFrame, maxIters)
          % refine robot pose in world (inPose) based on lidar
          % registration. Terminates if maxIters iterations is
@@ -97,27 +98,22 @@ classdef lineMapLocalizer < handle
          % increase fit error are not included and termination
          % occurs thereafter.
          % Fill me in?
-            disp("starting to refine pose");
             curPose = inPose;
             success = 0;
             ids = obj.throwOutliers(obj, inPose, ptsInModelFrame);
-            ptsInModelFrame = ptsInModelFrame(:,ids);
-            
+            ptsInModelFrame(:,ids) = [];
             for i = 0:maxIters
-                
                 [curErr, J] = obj.getJacobian(obj, curPose, ptsInModelFrame);
                 gradMag = sqrt(sum(J .* J));
-                disp([curErr, gradMag]);
-                curPose = pose(curPose.getPoseVec - [obj.gain*J(1); obj.gain*J(2); obj.gain*J(3)]);
+                curPose = pose(curPose.getPoseVec + [obj.gain*gradMag*J(1); obj.gain*gradMag*J(2); obj.gain*gradMag*J(3)]);
                 if (curErr < obj.errThresh)
-                    disp("success!");
+                    disp("success");
                     outPose = curPose;
                     success = 1;
-                    break;
+                    return;
                 end
-                
             end
-            disp("failure :(");
+            disp("failure");
             outPose = curPose;
             
         end
