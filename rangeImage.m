@@ -70,21 +70,21 @@ classdef rangeImage < handle
          % number of pixels participating, and the angle of
          % the line relative to the sensor.
         
-        oneSide = false;
+         oneSide = false;
         
-        th = 0;
-        lineFound = false;
-        pointSetX = []; pointSetY = [];
-        x = obj.xArray(midpoint); y = obj.yArray(midpoint);
-        pointSetX = [pointSetX x];
-        pointSetY = [pointSetY y];
-        leftIndex = midpoint;
-        rightIndex = midpoint;
-        sailDist = obj.rArray(midpoint);
+         th = 0;
+         lineFound = false;
+         pointSetX = []; pointSetY = [];
+         x = obj.xArray(midpoint); y = obj.yArray(midpoint);
+         pointSetX = [pointSetX x];
+         pointSetY = [pointSetY y];
+         leftIndex = midpoint;
+         rightIndex = midpoint;
+         sailDist = obj.rArray(midpoint);
         
-        prevLambda = [0,0];
-        i = 1;
-        while lineFound == false
+         prevLambda = [0,0];
+         i = 1;
+         while lineFound == false
             %%%%This if statement alternates adding a point to the left and adding a point to the right%%%%
             if mod(i, 2) == 1
                 leftIndex = obj.dec(leftIndex);
@@ -115,7 +115,7 @@ classdef rangeImage < handle
             lambda = eig(Inertia);
             lambda = sqrt(lambda)*1000.0;
             %%%%If the set of points has a length greater than a sail%%%%
-            if sailLength > obj.sailDistance && ~oneSide
+            if sailLength > obj.sailDistance + obj.threshold && ~oneSide && abs(prevLambda(2) - lambda(2)) > obj.Iyythreshold && length(pointSetX) > 3
                 oneSide = true;
                 if mod(i, 2) == 1
                     pointSetX(1) = [];
@@ -125,7 +125,7 @@ classdef rangeImage < handle
                     pointSetY(end) = [];
                 end
                 lambda = prevLambda;
-            elseif sailLength > obj.sailDistance
+            elseif sailLength > obj.sailDistance + obj.threshold && oneSide
                 
                 %%%%Remove the points just added%%%%
                 if mod(i, 2) == 1
@@ -156,6 +156,7 @@ classdef rangeImage < handle
                     lambda = eig(Inertia);
                     lambda = sqrt(lambda)*1000.0;
                     sailLength = sqrt((pointSetX(end) - pointSetX(1))^2 + (pointSetY(end) - pointSetY(1))^2);
+                    
                     %%%%Checks data against a lot of constants to see if it should be counted as a valid sail%%%%
                     if ((numPoints >= 3) && (sailDist < obj.maxDist) && (sailLength < obj.sailDistance + obj.threshold) && abs(lambda(2)) < 50)
                         isSail = true;
@@ -171,17 +172,16 @@ classdef rangeImage < handle
                     return
                 end
             elseif oneSide
-                oneSide = false;
-                lambda = prevLambda;
                 isSail = false;
                 return
             end
             prevLambda = lambda;
             i = i + 1;
          end
+         
          end
          
-         function [isZero, centerX, centerY, centerTh] = getPalletLoc(obj, RobotSystem, leftIndex, rightIndex)
+         function [isZero, centerX, centerY, centerTh] = getPalletLoc(obj, RobotSystem, leftIndex, rightIndex, xOffset)
              %%%%go from leftIndex to rightIndex and see if any of the points correspond to a pallet%%%%
              midpoint = leftIndex+10;
              X = 0;
@@ -192,7 +192,16 @@ classdef rangeImage < handle
              %%%%Loops from left to right through the range specified%%%%
              while midpoint ~= rightIndex-10
                  [isSail, testTh, numPoints] = obj.findLineCandidate(midpoint);
-                 if(isSail && numPoints > palletPoints && obj.rArray(midpoint) <= palletDist && (obj.rArray(midpoint) > .054 || obj.rArray(midpoint) < .052))
+                 if(isSail && numPoints > palletPoints && obj.rArray(midpoint) <= palletDist+.01 && (obj.rArray(midpoint) > .054))
+                     palletPoints = numPoints;
+                     X = obj.xArray(midpoint);
+                     Y = obj.yArray(midpoint);
+                     Th = testTh;
+                     palletDist = obj.rArray(midpoint);
+                     if X < .05
+                         Th = 0;
+                     end
+                 elseif(isSail && obj.rArray(midpoint) <= palletDist-.01 && (obj.rArray(midpoint) > .054))
                      palletPoints = numPoints;
                      X = obj.xArray(midpoint);
                      Y = obj.yArray(midpoint);
@@ -207,7 +216,7 @@ classdef rangeImage < handle
              
              robotPose = RobotSystem.pid.actualPoses(end);
              
-             goal = pose(X, Y, 0);
+             goal = pose(X + xOffset, Y -.015, Th);
              convertedGoal = pose.matToPoseVec(robotPose.bToA() * goal.bToA());
              
              centerX = convertedGoal(1);

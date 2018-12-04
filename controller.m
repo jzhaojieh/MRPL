@@ -11,29 +11,42 @@ classdef controller < handle
         thArr;
         timeArr;
         actualPoses;
+        fusionPoses;
         actualXs;
         actualYs;
         linError;
         angError;
     end
+
     methods(Static = true)
         function obj = controller(robotModel, lRead, rRead)
             obj.rob = robotModel;
             initialPose = pose(0,0,0);
+            
             obj.lEnc = [];
             obj.rEnc = [];
+            
             obj.thArr = [];
             obj.timeArr = [];
+            
             obj.actualPoses = [];
+            obj.fusionPoses = [];
+            
             obj.actualXs = [obj.actualXs, 0];
             obj.actualYs = [obj.actualYs, 0];
+            
             obj.linError = [];
             obj.angError = [];
+            
             obj.lEnc = [obj.lEnc, lRead];
             obj.rEnc = [obj.rEnc, rRead];
+            
             obj.thArr = [obj.thArr, 0];
             obj.timeArr = [obj.timeArr, 0];
-            obj.actualPoses = [obj.actualPoses, initialPose]; %robotCoord poses that were measured encoders
+            
+            obj.actualPoses = [obj.actualPoses, initialPose];
+            obj.fusionPoses = [obj.fusionPoses, initialPose];
+            
             obj.linError = [obj.linError, 0];
             obj.angError = [obj.angError, 0];
         end
@@ -74,6 +87,18 @@ classdef controller < handle
             dy = displacement*sin(curTh-(dTheta/2));
             
             curPose = pose(prevX + dx, prevY + dy, curTh);
+            
+            fusionTh = obj.fusionPoses(end).th + dTheta;
+            
+            %%%%Normalizing the angle%%%%
+            if abs(fusionTh) > pi
+                fusionTh = sign(fusionTh)*(-1)*(2*pi-abs(fusionTh));
+            end
+            
+            fusionX = obj.fusionPoses(end).x;
+            fusionY = obj.fusionPoses(end).y;
+            fusionPose = pose(fusionX + dx, fusionY + dy, fusionTh);
+            obj.fusionPoses = [obj.fusionPoses, fusionPose];
             
             errorX = correctPos.x - curPose.x;
             errorY = correctPos.y - curPose.y;
