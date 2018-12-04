@@ -82,7 +82,7 @@ classdef lineMapLocalizer < handle
             newPose = pose(poseIn.poseVec+dp);
             % Fill me in...
             errorX = (fitError(obj,newPose,modelPts) - err2_Plus0)/eps;
-                        
+            
             dp = [0.0 ; eps ; 0.0];
             newPose = pose(poseIn.poseVec+dp);
             errorY = (fitError(obj,newPose,modelPts) - err2_Plus0)/eps;
