@@ -67,8 +67,6 @@ classdef lineMapLocalizer < handle
                 avgErr2 = err2/num;
             else
             % not enough points to make a guess
-                disp("you suck");
-                disp(worldPts);
                 avgErr2 = inf;
             end
         end
@@ -99,23 +97,28 @@ classdef lineMapLocalizer < handle
          % increase fit error are not included and termination
         % occurs thereafter.
         % Fill me in?
+        
             curPose = inPose;
             success = 0;
             ids = obj.throwOutliers(obj, inPose, ptsInModelFrame);
-            ptsInModelFrame(:,ids) = [];
-            [curErr, J] = obj.getJacobian(obj, curPose, ptsInModelFrame);
+            ptsInModelFrame = ptsInModelFrame(:,ids);
+            
             for i = 0:maxIters
-                gradMag = sqrt(sum(J .* J));
-                curPose = pose(curPose.getPoseVec - obj.gain*2);
+                
                 [curErr, J] = obj.getJacobian(obj, curPose, ptsInModelFrame);
-                disp(curErr);
+                gradMag = sqrt(sum(J .* J));
+                curPose = pose(curPose.getPoseVec - [obj.gain*gradMag*sign(J(1)); obj.gain*gradMag*sign(J(2)); obj.gain*gradMag*sign(J(3))]);
+                
                 if (curErr < obj.errThresh)
                     outPose = curPose;
                     success = 1;
                     break;
                 end
+                
             end
+            
             outPose = curPose;
+            
         end
         function [rad2, po] = closestPointOnLineSegment(pi,p1,p2)
             % Given set of points and a line segment, returns the
