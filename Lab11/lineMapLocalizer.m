@@ -22,7 +22,7 @@ classdef lineMapLocalizer < handle
      
      methods(Static = true)
      
-         function obj = lineMapLocalizer(lines_p1,lines_p2,gain,errThresh,gradThresh)
+         function obj = lineMapLocalizer(lines_p1, lines_p2, gain, errThresh, gradThresh)
              % create a lineMapLocalizer
              obj.lines_p1 = lines_p1;
              obj.lines_p2 = lines_p2;
@@ -97,7 +97,7 @@ classdef lineMapLocalizer < handle
          % increase fit error are not included and termination
         % occurs thereafter.
         % Fill me in?
-        
+            disp("starting to refine pose");
             curPose = inPose;
             success = 0;
             ids = obj.throwOutliers(obj, inPose, ptsInModelFrame);
@@ -108,15 +108,15 @@ classdef lineMapLocalizer < handle
                 [curErr, J] = obj.getJacobian(obj, curPose, ptsInModelFrame);
                 gradMag = sqrt(sum(J .* J));
                 curPose = pose(curPose.getPoseVec - [obj.gain*gradMag*sign(J(1)); obj.gain*gradMag*sign(J(2)); obj.gain*gradMag*sign(J(3))]);
-                
                 if (curErr < obj.errThresh)
+                    disp("success!");
                     outPose = curPose;
                     success = 1;
                     break;
                 end
                 
             end
-            
+            disp("failure :(");
             outPose = curPose;
             
         end
