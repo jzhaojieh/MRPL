@@ -70,13 +70,14 @@ classdef lineMapLocalizer < handle
             end
          end
         
+        %[scalar, vector]
         function [err2_Plus0, J] = getJacobian(obj,poseIn,modelPts)
         % Computes the gradient of the error function
             err2_Plus0 = obj.fitError(obj, poseIn, modelPts);
             eps = 1e-5;
             dp = [eps ; 0.0 ; 0.0];
             newPose = pose(poseIn.getPoseVec+dp);
-            % Fill me in...
+%===== WRITTEN BY MERPLE SQUAD FROM HERE ====================================
             errorX = (obj.fitError(obj,newPose,modelPts) - err2_Plus0)/eps;
                         
             dp = [0.0 ; eps ; 0.0];
