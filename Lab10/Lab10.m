@@ -25,6 +25,8 @@ dt = -0.05+0.2*rand();
 thePose = pose(0.0+dx,0.0+dy,0.0+dt);
 
 l = lineMapLocalizer(lines_p1, lines_p2, 0.3, 0.01, 0.0005);
-[success, curPose] = l.refinePose(thePose, modelPts, 20);
+[success, curPose] = l.refinePose(l, thePose, modelPts, 20);
 
+disp([thePose.x, thePose.y, thePose.th]);
+disp([curPose.x, curPose.y, curPose.th]);
 disp(success)
