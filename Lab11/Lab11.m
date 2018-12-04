@@ -7,7 +7,7 @@ clear classes;
 
 sim =        0    ;
 plot =       1    ;
-feedback =   0    ;
+feedback =   1    ;
 cleanFlag =  0    ;
 skip =       1    ;
 leftIndex =  275+50  ;
@@ -27,7 +27,7 @@ p4=  [ 0    ; 1.22];
 lines_p1 = [p1 p2];
 lines_p2 = [p3 p4];
 global laser
-laser = lineMapLocalizer(lines_p1, lines_p2, 0.05, 0.0005);
+laser = lineMapLocalizer(lines_p1, lines_p2, 0.01, 0.0005);
 
 %%%%Preset the robot's pose%%%%
 
@@ -92,8 +92,8 @@ function laserEventListener(handle, event)
     for i = 1:360
         inputPoints = [inputPoints, [arr(i)*sin(i-5);arr(i)*cos(i-5);1]];
     end
-    [success, curPose] = laser.refinePose(laser, RobotSystem.pid.fusionPoses(end), inputPoints, 50);
+    [success, curPose] = laser.refinePose(laser, RobotSystem.pid.fusionPoses(end), inputPoints, 20);
     if(success)
-        RobotSystem.pid.fusionPoses(end) = pose((RobotSystem.pid.fusionPoses(end).getPoseVec + curPose.getPoseVec)/2);
+        RobotSystem.pid.fusionPoses(end) = curPose;
     end
 end
