@@ -45,8 +45,10 @@ classdef lineMapLocalizer < handle
             ro2 = min(r2Array,[],1);
         end
         
+        
          function ids = throwOutliers(obj,pose,ptsInModelFrame)
-        % Find ids of outliers in a scan.
+        %Throws out data points that are endpoints or "stick out" too much
+        %from the others
             worldPts = pose.bToA()*ptsInModelFrame;
             r2 = obj.closestSquaredDistanceToLines(obj, worldPts);
             ids = find(r2 > lineMapLocalizer.maxErr*lineMapLocalizer.maxErr);
@@ -65,7 +67,7 @@ classdef lineMapLocalizer < handle
             if(num >= lineMapLocalizer.minPts)
                 avgErr2 = err2/num;
             else
-            % not enough points to make a guess
+            % not enough points to make a guess, so will not guess
                 avgErr2 = inf;
             end
          end
@@ -74,7 +76,7 @@ classdef lineMapLocalizer < handle
         function [err2_Plus0, J] = getJacobian(obj,poseIn,modelPts)
         % Computes the gradient of the error function
             err2_Plus0 = obj.fitError(obj, poseIn, modelPts);
-            eps = 1e-5;
+            eps = 1e-5; %Tweak this??
             dp = [eps ; 0.0 ; 0.0];
             newPose = pose(poseIn.getPoseVec+dp);
 %===== WRITTEN BY MERPLE SQUAD FROM HERE ====================================
@@ -90,6 +92,9 @@ classdef lineMapLocalizer < handle
             J = [errorX;errorY;errorTh];
         end
         
+        %As is, the equations themselves of the jacobian and new poses should be working
+        %Play with epsilon value in getJacobian??? Or Fix Tau in
+        %controller? (Ideally, we should NOT touch the controlller.
         function [success, outPose] = refinePose(obj, inPose, ptsInModelFrame, maxIters)
          % refine robot pose in world (inPose) based on lidar
          % registration. Terminates if maxIters iterations is
@@ -98,14 +103,15 @@ classdef lineMapLocalizer < handle
          % any changes that reduced the fit error. Pose changes that
          % increase fit error are not included and termination
          % occurs thereafter.
-         % Fill me in?
             curPose = inPose;
             success = 0;
             ids = obj.throwOutliers(obj, inPose, ptsInModelFrame);
             ptsInModelFrame(:,ids) = [];
             for i = 0:maxIters
+                %Gets current error and gradient descent jacobian
                 [curErr, J] = obj.getJacobian(obj, curPose, ptsInModelFrame);
                 gradMag = sqrt(sum(J .* J));
+                %subtracts the change in error from the poses
                 curPose = pose(curPose.getPoseVec - [obj.gain*gradMag*J(1); obj.gain*gradMag*J(2); obj.gain*gradMag*J(3)]);
                 if (curErr < obj.errThresh)
                     disp("success");
@@ -116,8 +122,9 @@ classdef lineMapLocalizer < handle
             end
             disp("failure");
             outPose = curPose;
-            
         end
+        
+%================THIS WAS GIVEN============================================
         function [rad2, po] = closestPointOnLineSegment(pi,p1,p2)
             % Given set of points and a line segment, returns the
             % closest point and square of distance to segment for
